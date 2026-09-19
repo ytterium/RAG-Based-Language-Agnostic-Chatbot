@@ -26,6 +26,8 @@ NOTICE_BOARD_URLS = [
     "https://mait.ac.in",
     "http://www.ipu.ac.in/notices.php",
     "https://ipu.ac.in/notices.php",
+    "http://www.ipu.ac.in/exam_notices.php",
+    "https://ipu.ac.in/exam_notices.php",
     "https://ipu.ac.in",
 ]
 
@@ -121,12 +123,13 @@ def scrape_notices() -> List[Dict[str, Any]]:
                 date_str = date_el.get_text(strip=True) if date_el else str(datetime.today().date())
 
                 item_idx = len(all_notices) + 1
+                dept_name = "Examination Division" if "exam" in url.lower() else "Academic Section"
                 all_notices.append({
                     "text": text,
                     "metadata": {
                         "source": f"{url}#notice_{item_idx}",
                         "date": date_str,
-                        "department": "Academic Section",
+                        "department": dept_name,
                         "circular_number": "",
                         "ocr_method": "web_scrape"
                     }
