@@ -17,10 +17,16 @@ try:
 except ImportError:
     from backend.config import RAW_SCRAPED_DIR
 
+# WHAT: List of institutional notice board URLs to monitor across MAIT and affiliating university GGSIPU.
+# WHY: Captures official circulars, examination schedules, fee deadlines, and admission announcements
+#      published on both the college portal (mait.ac.in) and university portal (ipu.ac.in).
 NOTICE_BOARD_URLS = [
     "https://www.mait.ac.in/index.php/notices",
     "https://www.mait.ac.in/notices.php",
     "https://mait.ac.in",
+    "http://www.ipu.ac.in/notices.php",
+    "https://ipu.ac.in/notices.php",
+    "https://ipu.ac.in",
 ]
 
 REQUEST_HEADERS = {
@@ -89,11 +95,20 @@ def scrape_notices() -> List[Dict[str, Any]]:
 
             soup = BeautifulSoup(resp.text, "html.parser")
 
-            # Strategy 1: Find notice divs, tables, or list items
+            # Strategy 1: Find notice divs, tables, or list items with matching class tags
             notice_elements = soup.find_all(
                 ["div", "tr", "li"],
                 class_=re.compile(r'(notice|announcement|circular|news|item)', re.IGNORECASE)
             )
+
+            # Strategy 2: If on a dedicated notice page or university table, also extract table rows containing links
+            if "notices" in url.lower() or "ipu.ac.in" in url.lower():
+                table_rows = soup.find_all("tr")
+                for row in table_rows:
+                    if row not in notice_elements:
+                        cells = row.find_all(["td", "th"])
+                        if len(cells) >= 2 and row.find("a"):
+                            notice_elements.append(row)
 
             for el in notice_elements:
                 title_el = el.find(["h3", "h4", "a", "strong", "p"])
