@@ -4,18 +4,93 @@
 **Team:** MNP059 | MAIT CSE | B.Tech VII Semester (2023–2027)
 **Track:** EdTech / Education Technology
 **Architecture:** Agentic Self-Corrective RAG — LangGraph + BGE-M3 + BM25 + Adaptive OCR + Mistral 7B + Flask + ReactJS
+**GitHub Repo:** `https://github.com/YOUR_USERNAME/algolens` ← replace with actual URL after creating repo
 
 ---
 
 ## ⚡ HOW TO USE THIS DOCUMENT (READ FIRST — FOR ANY AI MODEL)
 
-This is a **living implementation guide** designed so that any AI coding assistant can pick it up at any point and continue the work. The rules are simple:
+This is a **living implementation guide** designed so that any AI coding assistant can pick it up at any point and continue the work. Follow these rules strictly:
 
-1. **Before starting any task** — read the current milestone's checklist and the last `## 🤝 HANDOFF` block at the bottom of this file.
-2. **After completing any sub-task** — mark its checkbox `[x]`, add a brief note of what was done and any decisions made.
-3. **After completing a full milestone** — write a new `## 🤝 HANDOFF` block at the bottom of this file summarizing: what was built, what files were created/modified, what is broken or pending, and what the next task is.
+1. **Before starting any task** — read the current milestone's checklist and the `## 🤝 HANDOFF` block at the bottom.
+2. **After completing each sub-task** — mark its checkbox `[x]` with a brief inline note.
+3. **After completing a full milestone:**
+   - Run the **🧪 Test & Verify** block for that milestone — fix ALL errors before proceeding
+   - Run the **📦 Git Commit & Push** block — use the exact commit message format shown
+   - Replace the `## 🤝 HANDOFF` block at the bottom with a new one
 4. **Never delete or modify completed `[x]` items** — they are the audit trail.
-5. **Always attach relevant file paths** in your handoff note so the next session knows exactly where to look.
+5. **Always include relevant file paths** in the handoff note.
+
+---
+
+## 📐 COMMIT MESSAGE CONVENTION (MANDATORY — ALL AI MODELS MUST FOLLOW)
+
+All commits use **Conventional Commits** format:
+
+```
+<type>(<scope>): <short imperative description>
+
+[optional body — explain WHY, not what]
+```
+
+**Types:** `feat` | `fix` | `test` | `refactor` | `docs` | `chore` | `style`
+
+**Scopes:** `ocr` | `retrieval` | `agent` | `linguistic` | `db` | `api` | `frontend` | `eval` | `config` | `deps`
+
+**✅ Good commit messages:**
+```
+feat(ocr): add adaptive OCR router with Pixtral-12B fallback
+feat(retrieval): implement BGE-M3 ChromaDB dense search
+feat(retrieval): add BM25 sparse index and RRF fusion (k=60)
+feat(agent): implement 5-node LangGraph self-corrective pipeline
+feat(linguistic): add Hinglish normalizer with phonetic transliteration
+feat(linguistic): add contextual query rewriter for multi-turn chats
+feat(db): add SQLite schema for query_logs and escalation_tickets
+feat(api): add Flask REST API with /chat /health /unresolved /feedback
+feat(frontend): add chat UI with citation cards and escalation card
+fix(ocr): correct Tesseract binary path on Windows
+fix(agent): handle infinite retry loop in Node 2 edge case
+test(ocr): add benchmark comparing PyMuPDF vs Tesseract vs Pixtral-12B
+test(retrieval): verify BM25 exact match on circular IDs and form numbers
+chore(deps): add sentence-transformers chromadb rank-bm25 to requirements
+refactor(agent): extract node functions from graph.py into nodes.py
+docs(paper): update IEEE paper results section with RAGAS evaluation data
+```
+
+**❌ NEVER do this:**
+```
+git commit -m "update"
+git commit -m "fixed bug"
+git commit -m "changes"
+git commit -m "working now"
+```
+
+---
+
+## 📋 ARCHITECTURE DECISIONS (LOCKED — DO NOT CHANGE WITHOUT DISCUSSION)
+
+| Decision | Choice | Reason |
+|---|---|---|
+| **Generation LLM** | Mistral 7B Instruct (open weights, Apache 2.0) | Citable: Jiang et al., arXiv:2310.06825. Reproducible. Free. |
+| **OCR — Digital PDFs** | PyMuPDF | Fast, layout-aware, free |
+| **OCR — Clean scans** | Tesseract 5.x | Fast, free, local. Cite: Smith 2007 |
+| **OCR — Noisy/complex images** | Pixtral-12B (open weights) | Best quality. Cite: Agrawal et al., arXiv:2410.07073 |
+| **OCR Preprocessing** | OpenCV | Binarize, deskew before Tesseract |
+| **Dense Embedder** | BGE-M3 (BAAI, open weights) | Multilingual, citable: Chen et al., arXiv:2309.07597 |
+| **Sparse Search** | BM25 (rank-bm25) | Exact keyword/date/ID matching |
+| **Vector Store** | ChromaDB (persistent) | Decided. Not FAISS. |
+| **Relational DB** | SQLite | Decided. Not PostgreSQL. |
+| **Orchestration** | LangGraph + LangChain | Stateful self-corrective graph |
+| **Backend** | Python + Flask | Lightweight REST API |
+| **Frontend** | ReactJS + Tailwind CSS | Chat UI + Citation Cards |
+| **Languages in scope** | English + Hindi + Hinglish | Marathi/Tamil deferred to future work |
+| **Web scraper** | bs4 (BeautifulSoup) | Offline scheduled batch job ONLY — NOT in runtime path |
+| **Voice input** | ❌ Removed | Out of scope for v1 |
+
+> **RUNTIME ORDER:** Layer 3 (Linguistic) → Layer 2 (Retrieval via Layer 1 index) → Layer 4 (LangGraph)
+> Layer 1 (Ingestion) runs as an **offline scheduled batch job**, never at query time.
+
+---
 
 ---
 
@@ -264,7 +339,36 @@ minor/
   print("Ollama OK:", response['message']['content'])
   ```
 
-**After completing Milestone 1, mark all items `[x]` and write a HANDOFF block at the bottom of this file.**
+#### 🧪 Test & Verify — Milestone 1
+```powershell
+# Run this in backend/ with venv activated — ALL must pass before committing
+cd C:\Users\ynj02\Desktop\minor\backend
+.\venv\Scripts\activate
+python -c "import chromadb, langchain, langgraph, ollama, fitz, pytesseract, cv2, flask, rank_bm25; print('ALL IMPORTS OK')"
+python -c "from lingua import Language, LanguageDetectorBuilder; print('lingua OK')"
+python -c "from sentence_transformers import SentenceTransformer; print('sentence-transformers OK')"
+ollama list   # Must show: mistral
+& "C:\Program Files\Tesseract-OCR\tesseract.exe" --version   # Must show version
+python -c "import ollama; r=ollama.chat(model='mistral',messages=[{'role':'user','content':'Say OK'}]); print('Mistral OK:', r['message']['content'])"
+```
+> Fix any ImportError or connection error before moving to Milestone 2.
+
+#### 📦 Git Commit & Push — Milestone 1
+```powershell
+cd C:\Users\ynj02\Desktop\minor
+git add backend/requirements.txt backend/config.py backend/__init__.py
+git add backend/ingestion/__init__.py backend/retrieval/__init__.py
+git add backend/linguistic/__init__.py backend/agent/__init__.py backend/db/__init__.py
+git add frontend/package.json frontend/vite.config.js frontend/tailwind.config.js
+git commit -m "chore(deps): environment setup — all dependencies installed and verified
+
+- Python venv created with all required packages
+- Ollama installed with mistral model pulled
+- Tesseract 5.x installed at C:/Program Files/Tesseract-OCR/
+- React frontend scaffolded with Tailwind CSS
+- config.py created with all system constants"
+git push origin main
+```
 
 ---
 
@@ -539,7 +643,37 @@ minor/
   python run_ingestion.py
   ```
 
-**After completing Milestone 2, mark all items `[x]` and write a HANDOFF block at the bottom of this file.**
+#### 🧪 Test & Verify — Milestone 2
+```powershell
+cd C:\Users\ynj02\Desktop\minor\backend
+.\venv\Scripts\activate
+# Test 1: Digital PDF extraction
+python -c "from ingestion.pdf_parser import extract_text_from_pdf; r=extract_text_from_pdf('../data/raw/pdfs/scholarship_2026.pdf'); print('Pages extracted:', len(r)); print('Sample:', r[0]['text'][:200])"
+# Test 2: OCR router — put a clean image in data/raw/scanned_images/ and test
+python -c "from ingestion.ocr_router import route_and_extract; r=route_and_extract('../data/raw/scanned_images/test_notice.jpg'); print('Method:', r['method']); print('Text:', r['text'][:200])"
+# Test 3: Chunker
+python -c "from ingestion.chunker import chunk_text; c=chunk_text('word '*600, {'source':'test','date':'','department':'','circular_number':'','ocr_method':'test'}); print('Chunks:', len(c)); print('First chunk tokens:', len(c[0]['text'].split()))"
+# Test 4: Full ingestion run (needs at least 1 PDF in data/raw/pdfs/)
+python run_ingestion.py
+# Expected output: "[INGESTION] Total chunks: N" and "[INGESTION] ChromaDB index built."
+```
+> All 4 tests must produce output without errors. If ChromaDB or BM25 file not created, debug run_ingestion.py.
+
+#### 📦 Git Commit & Push — Milestone 2
+```powershell
+cd C:\Users\ynj02\Desktop\minor
+git add backend/ingestion/ backend/run_ingestion.py
+git commit -m "feat(ocr): adaptive OCR ingestion pipeline with 3-path router
+
+- pdf_parser.py: PyMuPDF layout-aware text and table extraction
+- tesseract_ocr.py: Tesseract 5.x with OpenCV binarize/deskew preprocessing
+- pixtral_ocr.py: Pixtral-12B vision LLM for noisy/complex notice images
+- ocr_router.py: quality-aware dispatcher using Laplacian sharpness metric
+- chunker.py: 500-token/100-overlap recursive chunker with metadata tagging
+- web_crawler.py: BeautifulSoup offline batch scraper for notice boards
+- run_ingestion.py: CLI entry point building ChromaDB + BM25 index"
+git push origin main
+```
 
 ---
 
@@ -694,7 +828,33 @@ minor/
   # Test: python -c "from retrieval.embedder import dense_search; print(dense_search('scholarship form last date'))"
   ```
 
-**After completing Milestone 3, mark all items `[x]` and write a HANDOFF block at the bottom of this file.**
+#### 🧪 Test & Verify — Milestone 3
+```powershell
+cd C:\Users\ynj02\Desktop\minor\backend
+.\venv\Scripts\activate
+# Test 1: Dense search returns results
+python -c "from retrieval.embedder import dense_search; r=dense_search('scholarship form last date'); print('Dense hits:', len(r)); print('Top score:', r[0]['score'] if r else 'NO RESULTS')"
+# Test 2: BM25 exact match on form number
+python -c "from retrieval.sparse_search import sparse_search; r=sparse_search('Form 16-A submission'); print('BM25 hits:', len(r))"
+# Test 3: RRF fusion
+python -c "from retrieval.embedder import dense_search; from retrieval.sparse_search import sparse_search; from retrieval.rrf_fusion import reciprocal_rank_fusion; d=dense_search('fee deadline'); s=sparse_search('fee deadline'); fused=reciprocal_rank_fusion(d,s); print('Fused candidates:', len(fused))"
+# Test 4: Full retrieval pipeline
+python -c "from retrieval.embedder import dense_search; from retrieval.sparse_search import sparse_search; from retrieval.rrf_fusion import reciprocal_rank_fusion; from retrieval.reranker import rerank; q='when is the last date for scholarship'; d=dense_search(q); s=sparse_search(q); f=reciprocal_rank_fusion(d,s); top3=rerank(q,f); print('Final top-3 chunks:'); [print(f' - {c[\"metadata\"][\"source\"]} (score: {c.get(\"rrf_score\",0):.3f})') for c in top3]"
+```
+> Test 2 must return BM25 matches with high score for exact terms. Test 4 must print exactly 3 chunks.
+
+#### 📦 Git Commit & Push — Milestone 3
+```powershell
+cd C:\Users\ynj02\Desktop\minor
+git add backend/retrieval/
+git commit -m "feat(retrieval): hybrid retrieval pipeline — BGE-M3 + BM25 + RRF + cross-encoder
+
+- embedder.py: BGE-M3 ChromaDB dense search with lazy model loading
+- sparse_search.py: BM25 Okapi index with pickle persistence
+- rrf_fusion.py: Reciprocal Rank Fusion (k=60) combining dense + sparse
+- reranker.py: BAAI/bge-reranker-v2-m3 cross-encoder producing top-3 passages"
+git push origin main
+```
 
 ---
 
@@ -815,7 +975,33 @@ minor/
       return response["message"]["content"].strip()
   ```
 
-**After completing Milestone 4, mark all items `[x]` and write a HANDOFF block at the bottom of this file.**
+#### 🧪 Test & Verify — Milestone 4
+```powershell
+cd C:\Users\ynj02\Desktop\minor\backend
+.\venv\Scripts\activate
+# Test 1: Language detection
+python -c "from linguistic.detector import detect_language; print(detect_language('scholarship form kab milegi')); print(detect_language('when is the fee deadline'))"
+# Expected: hi, en
+# Test 2: Hinglish normalizer
+python -c "from linguistic.normalizer import normalize_query; print(normalize_query('fees kab bharna hai submission', 'hi'))"
+# Expected: should contain 'fee payment schedule'
+# Test 3: Query rewriter (needs Ollama running)
+python -c "from linguistic.query_rewriter import rewrite_query; history=[{'role':'user','content':'Tell me about the scholarship form'},{'role':'assistant','content':'The scholarship form is available...'}]; print(rewrite_query('When is its last date?', history))"
+# Expected: a complete standalone question mentioning scholarship
+```
+> Test 1 language codes must be correct. Test 3 must produce a coherent standalone question.
+
+#### 📦 Git Commit & Push — Milestone 4
+```powershell
+cd C:\Users\ynj02\Desktop\minor
+git add backend/linguistic/
+git commit -m "feat(linguistic): language detection, Hinglish normalizer, and query rewriter
+
+- detector.py: lingua-py based English/Hindi classification
+- normalizer.py: two-step Hinglish pipeline — phonetic transliteration + intent mapping
+- query_rewriter.py: Mistral 7B contextual rewriter resolving multi-turn follow-ups"
+git push origin main
+```
 
 ---
 
@@ -1091,7 +1277,68 @@ minor/
   chatbot_agent = workflow.compile()
   ```
 
-**After completing Milestone 5, mark all items `[x]` and write a HANDOFF block at the bottom of this file.**
+#### 🧪 Test & Verify — Milestone 5
+```powershell
+cd C:\Users\ynj02\Desktop\minor\backend
+.\venv\Scripts\activate
+# Test 1: Full end-to-end agent run — English query
+python -c "
+from agent.graph import chatbot_agent
+result = chatbot_agent.invoke({
+    'original_query': 'What is the last date for scholarship form submission?',
+    'conversation_history': [],
+    'retry_count': 0,
+    'used_live_scraper': False,
+    'escalated': False
+})
+print('Language:', result['detected_language'])
+print('Response:', result['final_response'][:300])
+print('Citations:', result['citations'])
+"
+# Test 2: Hindi query — language validator must respond in Hindi
+python -c "
+from agent.graph import chatbot_agent
+result = chatbot_agent.invoke({
+    'original_query': 'scholarship form ki last date kya hai',
+    'conversation_history': [],
+    'retry_count': 0,
+    'used_live_scraper': False,
+    'escalated': False
+})
+print('Detected lang:', result['detected_language'])
+print('Escalated:', result.get('escalated', False))
+print('Response preview:', result['final_response'][:200])
+"
+# Test 3: Unanswerable query — must escalate
+python -c "
+from agent.graph import chatbot_agent
+result = chatbot_agent.invoke({
+    'original_query': 'xyzabcunknownquery123',
+    'conversation_history': [],
+    'retry_count': 0,
+    'used_live_scraper': False,
+    'escalated': False
+})
+print('Escalated:', result.get('escalated'))   # Must be True
+"
+```
+> Test 1 must return a grounded response with citations. Test 2 response must not be in pure English. Test 3 MUST show escalated=True.
+
+#### 📦 Git Commit & Push — Milestone 5
+```powershell
+cd C:\Users\ynj02\Desktop\minor
+git add backend/agent/
+git commit -m "feat(agent): 5-node LangGraph self-corrective decision engine
+
+- state.py: AgentState TypedDict with all pipeline fields
+- nodes.py: Node1 relevance grader, Node2 reformulation+fallback,
+  Node3 Mistral 7B grounded generation, Node4 hallucination grader,
+  Node5 language consistency validator + escalation handler
+- edges.py: conditional routing with retry count bounds
+- graph.py: compiled LangGraph StateGraph with linguistic pre-processing
+  and hybrid retrieval integrated as entry nodes"
+git push origin main
+```
 
 ---
 
@@ -1137,7 +1384,25 @@ minor/
 
 - [ ] **6.4** Verify by querying SQLite after 3 test runs: `sqlite3 data/chatbot_audit.db "SELECT * FROM query_logs;"`
 
-**After completing Milestone 6, mark all items `[x]` and write a HANDOFF block at the bottom of this file.**
+#### 🧪 Test & Verify — Milestone 6
+```powershell
+cd C:\Users\ynj02\Desktop\minor\backend
+.\venv\Scripts\activate
+python -c "from db.database import init_db, log_query, log_escalation; init_db(); print('DB initialized OK')"
+python -c "import sqlite3; conn=sqlite3.connect('../data/chatbot_audit.db'); tables=conn.execute(\"SELECT name FROM sqlite_master WHERE type='table'\").fetchall(); print('Tables:', tables)"
+# Expected: [('query_logs',), ('escalation_tickets',)]
+```
+
+#### 📦 Git Commit & Push — Milestone 6
+```powershell
+cd C:\Users\ynj02\Desktop\minor
+git add backend/db/
+git commit -m "feat(db): SQLite schema and SQLAlchemy helpers for audit logging
+
+- models.py: query_logs and escalation_tickets table definitions
+- database.py: init_db, log_query, log_escalation CRUD functions"
+git push origin main
+```
 
 ---
 
@@ -1164,7 +1429,33 @@ minor/
     -d '{"query": "What is the last date for scholarship form submission?", "session_id": "test-001", "history": []}'
   ```
 
-**After completing Milestone 7, mark all items `[x]` and write a HANDOFF block at the bottom of this file.**
+#### 🧪 Test & Verify — Milestone 7
+```powershell
+# Terminal 1: Start Ollama + Flask
+ollama serve
+cd C:\Users\ynj02\Desktop\minor\backend
+.\venv\Scripts\activate
+python app.py
+
+# Terminal 2: Test endpoints
+Invoke-WebRequest -Uri http://localhost:5000/api/health -Method GET | Select-Object -ExpandProperty Content
+Invoke-WebRequest -Uri http://localhost:5000/api/chat -Method POST -ContentType "application/json" -Body '{"query":"What is the fee deadline?","session_id":"test-001","history":[]}' | Select-Object -ExpandProperty Content
+Invoke-WebRequest -Uri http://localhost:5000/api/unresolved -Method GET | Select-Object -ExpandProperty Content
+```
+> `/api/health` must return `{"status":"ok"}`. `/api/chat` must return a JSON response with `response` and `citations` keys.
+
+#### 📦 Git Commit & Push — Milestone 7
+```powershell
+cd C:\Users\ynj02\Desktop\minor
+git add backend/app.py
+git commit -m "feat(api): Flask REST API with 4 endpoints
+
+- POST /api/chat: invokes LangGraph agent, returns response + citations + escalation flag
+- GET /api/health: verifies Ollama and ChromaDB are ready
+- GET /api/unresolved: returns pending escalation tickets for staff
+- POST /api/feedback: stores student thumbs-up/down rating in SQLite"
+git push origin main
+```
 
 ---
 
@@ -1192,7 +1483,34 @@ minor/
   npm run dev
   ```
 
-**After completing Milestone 8, mark all items `[x]` and write a HANDOFF block at the bottom of this file.**
+#### 🧪 Test & Verify — Milestone 8
+```powershell
+# Ensure backend is running (python app.py in Terminal 1)
+cd C:\Users\ynj02\Desktop\minor\frontend
+npm run dev
+# Open http://localhost:5173 in browser and manually verify:
+# 1. Type "What is the scholarship deadline?" → response appears with citation card
+# 2. Type "fees kab bharna hai" → response appears (Hindi/Hinglish query)
+# 3. Type "xyzunknown123" → escalation card appears with office contact
+# 4. Check that CitationCard shows source filename and page number
+# 5. Check that LanguageBadge shows correct detected language
+```
+> All 5 manual checks must pass before committing.
+
+#### 📦 Git Commit & Push — Milestone 8
+```powershell
+cd C:\Users\ynj02\Desktop\minor
+git add frontend/src/ frontend/package.json frontend/tailwind.config.js
+git commit -m "feat(frontend): React chat UI with citation cards and escalation card
+
+- ChatWindow.jsx: message feed with auto-scroll and language badge
+- MessageBubble.jsx: formatted bot/user messages
+- CitationCard.jsx: clickable source cards showing filename, date, page
+- EscalationCard.jsx: admin contact card triggered on confidence fallback
+- LanguageBadge.jsx: detected language indicator (EN/HI)
+- api.js: Axios client for all Flask endpoints"
+git push origin main
+```
 
 ---
 
@@ -1219,7 +1537,35 @@ minor/
 
 - [ ] **9.6** Compile all results into `results/evaluation_summary.md` for the IEEE paper.
 
-**After completing Milestone 9, mark all items `[x]` and write a HANDOFF block at the bottom of this file.**
+#### 🧪 Test & Verify — Milestone 9
+```powershell
+cd C:\Users\ynj02\Desktop\minor\backend
+.\venv\Scripts\activate
+# Run OCR benchmark
+python eval/benchmark_ocr.py
+# Expected: results/ocr_comparison_table.csv created with CER/WER per method
+
+# Run RAGAS evaluation
+python eval/run_ragas.py
+# Expected: results/ragas_scores.json created with faithfulness/precision/relevance
+
+# Check output
+python -c "import json; d=open('../results/ragas_scores.json').read(); print(json.loads(d))"
+```
+> Both scripts must complete without error and produce output CSV/JSON files in `results/`.
+
+#### 📦 Git Commit & Push — Milestone 9
+```powershell
+cd C:\Users\ynj02\Desktop\minor
+git add backend/eval/ results/
+git commit -m "test(eval): RAGAS and OCR benchmark evaluation complete
+
+- eval/benchmark_ocr.py: CER/WER comparison across PyMuPDF/Tesseract/Pixtral-12B
+- eval/run_ragas.py: faithfulness, context precision, answer relevance evaluation
+- results/ocr_comparison_table.csv: OCR benchmark results for IEEE paper Table III
+- results/ragas_scores.json: RAGAS scores for IEEE paper Table IV"
+git push origin main
+```
 
 ---
 
