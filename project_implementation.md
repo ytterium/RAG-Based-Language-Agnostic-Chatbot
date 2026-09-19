@@ -20,6 +20,7 @@ This is a **living implementation guide** designed so that any AI coding assista
    - Replace the `## 🤝 HANDOFF` block at the bottom with a new one
 4. **Never delete or modify completed `[x]` items** — they are the audit trail.
 5. **Always include relevant file paths** in the handoff note.
+6. **Document all code with `# WHAT` and `# WHY` comments** — Before writing any function, class, or significant logic block, explicitly write `# WHAT:` (describing what the block does) and `# WHY:` (explaining the architectural purpose, design rationale, or edge-case handling) to guarantee codebase transparency and simplify debugging for any collaborator or AI model.
 
 ---
 
@@ -687,7 +688,7 @@ git push origin main
 - `backend/retrieval/rrf_fusion.py`
 - `backend/retrieval/reranker.py`
 
-- [ ] **3.1** Implement `backend/retrieval/embedder.py` — BGE-M3 + ChromaDB interface.
+- [x] **3.1** Implement `backend/retrieval/embedder.py` — BGE-M3 + ChromaDB interface. *(Completed: lazy-loaded SentenceTransformer, ChromaDB PersistentClient, upsert with ID deduplication, and dense_search returning top-10 chunks)*
   ```python
   # backend/retrieval/embedder.py
   import chromadb
@@ -735,7 +736,7 @@ git push origin main
       ]
   ```
 
-- [ ] **3.2** Implement `backend/retrieval/sparse_search.py` — BM25 lexical retriever.
+- [x] **3.2** Implement `backend/retrieval/sparse_search.py` — BM25 lexical retriever. *(Completed: BM25Okapi builder, pickle serializer/loader, and tokenized lexical search for circular IDs, dates, and form codes)*
   ```python
   # backend/retrieval/sparse_search.py
   import pickle
@@ -770,7 +771,7 @@ git push origin main
       ]
   ```
 
-- [ ] **3.3** Implement `backend/retrieval/rrf_fusion.py` — RRF algorithm.
+- [x] **3.3** Implement `backend/retrieval/rrf_fusion.py` — RRF algorithm. *(Completed: Reciprocal Rank Fusion algorithm with k=60 combining dense and sparse ranks into top-10 fused candidates)*
   ```python
   # backend/retrieval/rrf_fusion.py
   from config import RRF_K, TOP_K_FUSED
@@ -800,7 +801,7 @@ git push origin main
       ]
   ```
 
-- [ ] **3.4** Implement `backend/retrieval/reranker.py` — cross-encoder re-ranking to top-3.
+- [x] **3.4** Implement `backend/retrieval/reranker.py` — cross-encoder re-ranking to top-3. *(Completed: BAAI/bge-reranker-v2-m3 cross-attention re-ranking producing final top-3 context passages)*
   ```python
   # backend/retrieval/reranker.py
   from sentence_transformers import CrossEncoder
@@ -823,7 +824,7 @@ git push origin main
       return [c for _, c in ranked[:TOP_K_FINAL]]
   ```
 
-- [ ] **3.5** Write a quick retrieval test to verify the full pipeline:
+- [x] **3.5** Write a quick retrieval test to verify the full pipeline: *(Completed: verified dense + sparse + RRF + cross-encoder re-ranking top-3 passages with zero errors)*
   ```python
   # Test: python -c "from retrieval.embedder import dense_search; print(dense_search('scholarship form last date'))"
   ```
@@ -1617,22 +1618,15 @@ curl http://localhost:5000/api/health
 
 ## 🤝 HANDOFF
 
-**Status:** Milestone 2 (Layer 1 — Adaptive OCR & Ingestion Pipeline) COMPLETE. All 4 tests passed with zero errors. 354 chunks indexed into persistent ChromaDB and serialized BM25 index. Ready for Milestone 3 (Layer 2 — Hybrid Retrieval Engine).
+**Status:** Milestone 3 (Layer 2 — Hybrid Retrieval Engine) COMPLETE. All 4 tests passed with zero errors. BGE-M3 dense retrieval, BM25 sparse search, RRF fusion (k=60), and cross-encoder re-ranking (bge-reranker-v2-m3) verified on live indexed notices. Ready for Milestone 4 (Layer 3 — Linguistic Pre-Processing).
 
 **What exists & is verified:**
-- `backend/ingestion/pdf_parser.py` — PyMuPDF layout-aware text & table extractor, tested on `scholarship_2026.pdf`
-- `backend/ingestion/tesseract_ocr.py` — OpenCV deskew, adaptive Otsu binarization, Laplacian variance sharpness calculation, and Tesseract 5.x OCR
-- `backend/ingestion/pixtral_ocr.py` — Pixtral-12B vision OCR via Ollama multimodal API with automated Tesseract fallback
-- `backend/ingestion/ocr_router.py` — Quality-aware 3-path dispatcher (PyMuPDF / Tesseract / Pixtral-12B) with raster PDF rendering support
-- `backend/ingestion/chunker.py` — 500-token window with 100-token overlap, regex-based automatic metadata extraction (circular numbers, dates, departments)
-- `backend/ingestion/web_crawler.py` — BeautifulSoup institutional notice crawler with local offline cache support in `data/raw/scraped/`
-- `backend/run_ingestion.py` — Batch offline ingestion CLI entry point, verified indexing 354 chunks into ChromaDB and `data/processed/bm25_store.pkl`
-- `backend/retrieval/embedder.py` — BGE-M3 embedding wrapper + ChromaDB persistent collection interface (verified with 354 documents)
-- `backend/retrieval/sparse_search.py` — BM25 Okapi lexical retriever and persistence (verified with 354 documents)
-- Sample verification data created and verified:
-  - `data/raw/pdfs/scholarship_2026.pdf` (MAIT MCM Scholarship circular with eligibility table)
-  - `data/raw/scanned_images/test_notice.jpg` (MAIT Exam Notice image for Tesseract OCR)
-- All 4 tests in **🧪 Test & Verify — Milestone 2** passed with zero errors.
+- `backend/retrieval/embedder.py` — BGE-M3 dense search with ChromaDB PersistentClient, upsert deduplication, fully documented with `# WHAT:` and `# WHY:` comments.
+- `backend/retrieval/sparse_search.py` — BM25 Okapi lexical sparse search with pickle serialization/loading, fully documented with `# WHAT:` and `# WHY:` comments.
+- `backend/retrieval/rrf_fusion.py` — Reciprocal Rank Fusion algorithm (k=60) combining dense and sparse ranks into top-10 fused candidates, fully documented with `# WHAT:` and `# WHY:` comments.
+- `backend/retrieval/reranker.py` — Cross-encoder re-ranking using BAAI/bge-reranker-v2-m3 producing final top-3 relevant context passages, fully documented with `# WHAT:` and `# WHY:` comments.
+- Layer 1 Ingestion Pipeline (`backend/ingestion/` + `backend/run_ingestion.py`) verified with 354 chunks in ChromaDB and BM25 index.
+- All 4 tests in **🧪 Test & Verify — Milestone 3** passed with zero errors.
 
 **Architecture locked decisions:**
 - Mistral 7B Instruct / Mistrallite via Ollama for generation (configurable via `OLLAMA_MODEL`)
@@ -1642,15 +1636,15 @@ curl http://localhost:5000/api/health
 - Languages: English + Hindi/Hinglish only
 - Web scraper is offline batch only (not runtime)
 - No voice input
+- `# WHAT:` and `# WHY:` comments mandatory on all functions and major code blocks.
 
 **Next task for incoming AI session:**
-Start at **Milestone 3: Layer 2 — Hybrid Retrieval Engine**.
-Key files to implement/finalize:
-1. `backend/retrieval/embedder.py` (Task 3.1 - dense search query interface with BGE-M3)
-2. `backend/retrieval/sparse_search.py` (Task 3.2 - BM25 keyword query search)
-3. `backend/retrieval/rrf_fusion.py` (Task 3.3 - Reciprocal Rank Fusion algorithm k=60)
-4. `backend/retrieval/reranker.py` (Task 3.4 - Cross-encoder re-ranking top-3 passages via BAAI/bge-reranker-v2-m3)
-5. Run **🧪 Test & Verify — Milestone 3** and push commits.
+Start at **Milestone 4: Layer 3 — Linguistic Pre-Processing**.
+Key files to implement:
+1. `backend/linguistic/detector.py` (Task 4.1 - Lingua language detection for English and Hindi)
+2. `backend/linguistic/normalizer.py` (Task 4.2 - Hinglish phonetic normalizer + intent-keyword extractor)
+3. `backend/linguistic/query_rewriter.py` (Task 4.3 - Multi-turn contextual query rewriter using Mistral 7B)
+4. Run **🧪 Test & Verify — Milestone 4** and push commits.
 
 **Key files to read first:**
 - `C:\Users\ynj02\Desktop\minor\project_implementation.md` ← Checklist and instructions

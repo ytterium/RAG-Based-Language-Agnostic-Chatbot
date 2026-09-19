@@ -17,6 +17,8 @@ _bm25: Optional[BM25Okapi] = None
 _chunks: Optional[List[Dict[str, Any]]] = None
 
 
+# WHAT: Tokenize all document chunks into lowercase word tokens and instantiate BM25Okapi index.
+# WHY: Dense models frequently miss exact notice codes (e.g. 'Acad/2026/04'); BM25 ensures exact string matching.
 def build_bm25_index(chunks: List[Dict[str, Any]]) -> BM25Okapi:
     """
     Build BM25 index from a list of chunks.
@@ -26,6 +28,8 @@ def build_bm25_index(chunks: List[Dict[str, Any]]) -> BM25Okapi:
     return BM25Okapi(tokenized_corpus)
 
 
+# WHAT: Load pickled BM25 index and chunk metadata from disk if not already in memory.
+# WHY: Prevents expensive re-tokenization on each query while persisting index across process restarts.
 def load_bm25() -> Tuple[Optional[BM25Okapi], List[Dict[str, Any]]]:
     """
     Load serialized BM25 index and chunk metadata from disk.
@@ -41,6 +45,8 @@ def load_bm25() -> Tuple[Optional[BM25Okapi], List[Dict[str, Any]]]:
     return _bm25, _chunks
 
 
+# WHAT: Tokenize query and rank chunks using BM25Okapi scoring function.
+# WHY: Returns top-k passages matching exact terminology, circular numbers, dates, and form codes.
 def sparse_search(query: str, top_k: int = TOP_K_FUSED) -> List[Dict[str, Any]]:
     """
     Search BM25 lexical index for exact keywords, circular IDs, and dates.

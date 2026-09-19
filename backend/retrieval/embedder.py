@@ -17,6 +17,8 @@ _chroma_client: Optional[chromadb.PersistentClient] = None
 _collection = None
 
 
+# WHAT: Lazy-load and cache the BGE-M3 SentenceTransformer model in global memory.
+# WHY: Avoids expensive re-initialization (~2.24 GB weight loading) on every individual retrieval request.
 def get_embed_model() -> SentenceTransformer:
     """Lazy-load BGE-M3 embedding model."""
     global _embed_model
@@ -25,6 +27,8 @@ def get_embed_model() -> SentenceTransformer:
     return _embed_model
 
 
+# WHAT: Initialize or retrieve the persistent ChromaDB collection instance.
+# WHY: PersistentClient saves vectors to disk (data/processed/chromadb/) ensuring index survives server restarts.
 def get_collection():
     """Lazy-load ChromaDB persistent client and collection."""
     global _chroma_client, _collection
@@ -35,6 +39,8 @@ def get_collection():
     return _collection
 
 
+# WHAT: Generate 1024-dim BGE-M3 dense embeddings for notice chunks and index them into ChromaDB.
+# WHY: Dense vectors capture cross-lingual semantic intent (Hindi, Hinglish, English) without exact keyword matching.
 def build_chromadb_index(chunks: List[Dict[str, Any]]) -> None:
     """
     Index all document chunks into ChromaDB.
@@ -51,6 +57,8 @@ def build_chromadb_index(chunks: List[Dict[str, Any]]) -> None:
     ids = [c["metadata"]["chunk_id"] for c in chunks]
     metadatas = [c["metadata"] for c in chunks]
 
+    # WHAT: Batch-encode chunk texts with normalization.
+    # WHY: L2-normalized embeddings enable cosine similarity computation via Euclidean/dot product metrics.
     embeddings = model.encode(
         texts,
         normalize_embeddings=True,
@@ -58,7 +66,8 @@ def build_chromadb_index(chunks: List[Dict[str, Any]]) -> None:
         show_progress_bar=True
     ).tolist()
 
-    # Deduplicate IDs to strictly enforce ChromaDB's unique ID constraint
+    # WHAT: Deduplicate IDs to strictly enforce ChromaDB's unique ID constraint.
+    # WHY: Prevents DuplicateIDError when multiple chunks or notices originate from the same base URL/source.
     seen_ids = set()
     unique_ids = []
     for i, cid in enumerate(ids):
@@ -71,7 +80,8 @@ def build_chromadb_index(chunks: List[Dict[str, Any]]) -> None:
         metadatas[i]["chunk_id"] = unique_id
         unique_ids.append(unique_id)
 
-    # Use upsert to allow idempotent re-runs of ingestion
+    # WHAT: Upsert unique documents into ChromaDB.
+    # WHY: Upsert guarantees idempotency so repeated ingestion runs safely refresh data without duplicate key errors.
     collection.upsert(
         documents=texts,
         embeddings=embeddings,
@@ -80,6 +90,8 @@ def build_chromadb_index(chunks: List[Dict[str, Any]]) -> None:
     )
 
 
+# WHAT: Encode incoming user query with BGE-M3 and perform approximate nearest neighbor search in ChromaDB.
+# WHY: Fetches the top-k semantically closest context passages regardless of exact token/spelling differences.
 def dense_search(query: str, top_k: int = TOP_K_FUSED) -> List[Dict[str, Any]]:
     """
     Search ChromaDB using BGE-M3 embeddings.
