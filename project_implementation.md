@@ -868,7 +868,7 @@ git push origin main
 - `backend/linguistic/normalizer.py`
 - `backend/linguistic/query_rewriter.py`
 
-- [ ] **4.1** Implement `backend/linguistic/detector.py` — language detection.
+- [x] **4.1** Implement `backend/linguistic/detector.py` — language detection. *(Completed: Lingua-py English/Hindi detection combined with Devanagari script and Hinglish phonetic marker analysis)*
   ```python
   # backend/linguistic/detector.py
   from lingua import Language, LanguageDetectorBuilder
@@ -891,7 +891,7 @@ git push origin main
       return "en"   # Default to English if uncertain
   ```
 
-- [ ] **4.2** Implement `backend/linguistic/normalizer.py` — Hinglish transliteration + intent extraction.
+- [x] **4.2** Implement `backend/linguistic/normalizer.py` — Hinglish transliteration + intent extraction. *(Completed: Two-step Hinglish normalization with phrase-to-intent dictionary, anchor keyword extraction, and indic-transliteration Devanagari support)*
   ```python
   # backend/linguistic/normalizer.py
   # Research contribution: two-step normalization for Romanized Hindi/Hinglish queries
@@ -934,7 +934,7 @@ git push origin main
       return query   # English queries pass through unchanged
   ```
 
-- [ ] **4.3** Implement `backend/linguistic/query_rewriter.py` — contextual query rewriter.
+- [x] **4.3** Implement `backend/linguistic/query_rewriter.py` — contextual query rewriter. *(Completed: Mistral 7B contextual rewriter via Ollama resolving conversational pronouns into complete standalone questions)*
   ```python
   # backend/linguistic/query_rewriter.py
   import ollama
@@ -1618,15 +1618,15 @@ curl http://localhost:5000/api/health
 
 ## 🤝 HANDOFF
 
-**Status:** Milestone 3 (Layer 2 — Hybrid Retrieval Engine) COMPLETE. All 4 tests passed with zero errors. BGE-M3 dense retrieval, BM25 sparse search, RRF fusion (k=60), and cross-encoder re-ranking (bge-reranker-v2-m3) verified on live indexed notices. Ready for Milestone 4 (Layer 3 — Linguistic Pre-Processing).
+**Status:** Milestone 4 (Layer 3 — Linguistic Pre-Processing) COMPLETE. All 3 tests passed with zero errors. Lingua language detection (en/hi), Devanagari script detection, Hinglish phonetic normalizer with intent-keyword mapping, and Mistral 7B contextual query rewriter for multi-turn conversational pronoun resolution verified. Ready for Milestone 5 (Layer 4 — LangGraph Self-Corrective Engine).
 
 **What exists & is verified:**
-- `backend/retrieval/embedder.py` — BGE-M3 dense search with ChromaDB PersistentClient, upsert deduplication, fully documented with `# WHAT:` and `# WHY:` comments.
-- `backend/retrieval/sparse_search.py` — BM25 Okapi lexical sparse search with pickle serialization/loading, fully documented with `# WHAT:` and `# WHY:` comments.
-- `backend/retrieval/rrf_fusion.py` — Reciprocal Rank Fusion algorithm (k=60) combining dense and sparse ranks into top-10 fused candidates, fully documented with `# WHAT:` and `# WHY:` comments.
-- `backend/retrieval/reranker.py` — Cross-encoder re-ranking using BAAI/bge-reranker-v2-m3 producing final top-3 relevant context passages, fully documented with `# WHAT:` and `# WHY:` comments.
+- `backend/linguistic/detector.py` — Lingua-py language detector supporting English, Hindi (Devanagari), and Romanized Hinglish phonetic markers, fully documented with `# WHAT:` and `# WHY:` comments.
+- `backend/linguistic/normalizer.py` — Hinglish phonetic normalizer, intent-phrase dictionary, anchor keyword extractor, and indic-transliteration integration, fully documented with `# WHAT:` and `# WHY:` comments.
+- `backend/linguistic/query_rewriter.py` — Contextual multi-turn query rewriter using Mistral 7B via Ollama resolving conversational pronouns into standalone search queries, fully documented with `# WHAT:` and `# WHY:` comments.
+- Layer 2 Hybrid Retrieval Engine (`backend/retrieval/`) — BGE-M3 dense search, BM25 sparse search, RRF (k=60), and cross-encoder re-ranking (bge-reranker-v2-m3) verified with top-3 passages.
 - Layer 1 Ingestion Pipeline (`backend/ingestion/` + `backend/run_ingestion.py`) verified with 354 chunks in ChromaDB and BM25 index.
-- All 4 tests in **🧪 Test & Verify — Milestone 3** passed with zero errors.
+- All 3 tests in **🧪 Test & Verify — Milestone 4** passed with zero errors.
 
 **Architecture locked decisions:**
 - Mistral 7B Instruct / Mistrallite via Ollama for generation (configurable via `OLLAMA_MODEL`)
@@ -1639,14 +1639,17 @@ curl http://localhost:5000/api/health
 - `# WHAT:` and `# WHY:` comments mandatory on all functions and major code blocks.
 
 **Next task for incoming AI session:**
-Start at **Milestone 4: Layer 3 — Linguistic Pre-Processing**.
+Start at **Milestone 5: Layer 4 — LangGraph Self-Corrective Engine**.
 Key files to implement:
-1. `backend/linguistic/detector.py` (Task 4.1 - Lingua language detection for English and Hindi)
-2. `backend/linguistic/normalizer.py` (Task 4.2 - Hinglish phonetic normalizer + intent-keyword extractor)
-3. `backend/linguistic/query_rewriter.py` (Task 4.3 - Multi-turn contextual query rewriter using Mistral 7B)
-4. Run **🧪 Test & Verify — Milestone 4** and push commits.
+1. `backend/agent/state.py` (Task 5.1 - AgentState TypedDict definition)
+2. `backend/agent/nodes.py` (Task 5.2 - 5 LangGraph nodes: relevance grader, query reformulation, grounded generator, hallucination grader, language validator)
+3. `backend/agent/edges.py` (Task 5.3 - conditional routing functions)
+4. `backend/agent/graph.py` (Task 5.4 - LangGraph StateGraph assembly and compilation)
+5. Run **🧪 Test & Verify — Milestone 5** and push commits.
 
 **Key files to read first:**
 - `C:\Users\ynj02\Desktop\minor\project_implementation.md` ← Checklist and instructions
 - `C:\Users\ynj02\Desktop\minor\architecture\architecture_spec_UPDATED.md` ← Architecture reference
 - `C:\Users\ynj02\Desktop\minor\backend\config.py` ← System configuration constants
+- `C:\Users\ynj02\Desktop\minor\backend\linguistic\` ← Layer 3 linguistic preprocessing modules
+- `C:\Users\ynj02\Desktop\minor\backend\retrieval\` ← Layer 2 hybrid retrieval engine
