@@ -385,7 +385,7 @@ git push origin main
 - `backend/ingestion/web_crawler.py`
 - `backend/run_ingestion.py`
 
-- [ ] **2.1** Implement `backend/ingestion/pdf_parser.py` — PyMuPDF digital PDF parser.
+- [x] **2.1** Implement `backend/ingestion/pdf_parser.py` — PyMuPDF digital PDF parser. *(Completed: layout-aware digital PDF parser with table row extraction and is_searchable detection)*
   ```python
   # backend/ingestion/pdf_parser.py
   import fitz  # PyMuPDF
@@ -411,7 +411,7 @@ git push origin main
       return pages
   ```
 
-- [ ] **2.2** Implement `backend/ingestion/tesseract_ocr.py` — Tesseract + OpenCV preprocessing.
+- [x] **2.2** Implement `backend/ingestion/tesseract_ocr.py` — Tesseract + OpenCV preprocessing. *(Completed: Laplacian variance sharpness computation, OpenCV deskewing, Otsu adaptive binarization, and Tesseract 5.x execution)*
   ```python
   # backend/ingestion/tesseract_ocr.py
   import cv2
@@ -439,7 +439,7 @@ git push origin main
       return pytesseract.image_to_string(preprocessed, lang='eng')
   ```
 
-- [ ] **2.3** Implement `backend/ingestion/pixtral_ocr.py` — Pixtral-12B vision OCR for noisy images.
+- [x] **2.3** Implement `backend/ingestion/pixtral_ocr.py` — Pixtral-12B vision OCR for noisy images. *(Completed: base64 image encoding, Ollama multimodal vision prompt, and graceful Tesseract fallback)*
   ```python
   # backend/ingestion/pixtral_ocr.py
   import ollama
@@ -468,7 +468,7 @@ git push origin main
       return response["message"]["content"]
   ```
 
-- [ ] **2.4** Implement `backend/ingestion/ocr_router.py` — the adaptive OCR dispatcher.
+- [x] **2.4** Implement `backend/ingestion/ocr_router.py` — the adaptive OCR dispatcher. *(Completed: 3-path quality-aware router for PyMuPDF, Tesseract, and Pixtral-12B with raster PDF rendering)*
   ```python
   # backend/ingestion/ocr_router.py
   import cv2
@@ -512,7 +512,7 @@ git push origin main
           raise ValueError(f"Unsupported file type: {ext}")
   ```
 
-- [ ] **2.5** Implement `backend/ingestion/chunker.py` — metadata-rich semantic chunker.
+- [x] **2.5** Implement `backend/ingestion/chunker.py` — metadata-rich semantic chunker. *(Completed: 500-token/100-overlap sliding window chunker with auto-regex extraction for circular IDs, dates, and departments)*
   ```python
   # backend/ingestion/chunker.py
   import re
@@ -540,7 +540,7 @@ git push origin main
       return chunks
   ```
 
-- [ ] **2.6** Implement `backend/ingestion/web_crawler.py` — scheduled offline scraper.
+- [x] **2.6** Implement `backend/ingestion/web_crawler.py` — scheduled offline scraper. *(Completed: BeautifulSoup parser for institutional notices with resilient request handling and offline disk cache in data/raw/scraped/)*
   ```python
   # backend/ingestion/web_crawler.py
   # NOTE: This runs as an OFFLINE batch job (run_ingestion.py) — NOT at query time.
@@ -580,7 +580,7 @@ git push origin main
       return all_notices
   ```
 
-- [ ] **2.7** Implement `backend/run_ingestion.py` — CLI entry point for the full offline pipeline.
+- [x] **2.7** Implement `backend/run_ingestion.py` — CLI entry point for the full offline pipeline. *(Completed: CLI pipeline batch processing PDFs, scanned images, and web notices into ChromaDB dense and BM25 sparse indices)*
   ```python
   # backend/run_ingestion.py
   # Run this script to rebuild the ChromaDB and BM25 index from scratch.
@@ -1617,18 +1617,22 @@ curl http://localhost:5000/api/health
 
 ## 🤝 HANDOFF
 
-**Status:** Milestone 1 (Environment Setup) COMPLETE. All tests passed with zero errors. Ready for Milestone 2 (Adaptive OCR & Ingestion Pipeline).
+**Status:** Milestone 2 (Layer 1 — Adaptive OCR & Ingestion Pipeline) COMPLETE. All 4 tests passed with zero errors. 354 chunks indexed into persistent ChromaDB and serialized BM25 index. Ready for Milestone 3 (Layer 2 — Hybrid Retrieval Engine).
 
 **What exists & is verified:**
-- `project_implementation.md` — Updated with Milestone 1 checkboxes marked `[x]`
-- `backend/config.py` — Central configuration with paths, OCR thresholds, retrieval parameters, and model options
-- `backend/requirements.txt` — Frozen backend dependencies (Flask, ChromaDB, Sentence-Transformers, PyTorch, LangGraph, LangChain, PyMuPDF, Pytesseract, OpenCV, Lingua, Indic-Transliteration, Ragas)
-- `backend/venv/` — Python 3.10 virtual environment with all packages installed and tested
-- `backend/` packages: `ingestion/`, `retrieval/`, `linguistic/`, `agent/`, `db/` with `__init__.py` files
-- `data/` directories: `raw/pdfs/`, `raw/scanned_images/`, `raw/scraped/`, `processed/chromadb/`, `processed/ocr_cache/`
-- Tesseract OCR v5.4.0 verified at `C:\Program Files\Tesseract-OCR\tesseract.exe`
-- Ollama server running locally on `http://127.0.0.1:11434` with `mistrallite:latest` active and tested (along with `qwen2:7b`); configurable via `OLLAMA_MODEL` in `config.py`
-- Frontend: React + Vite + Tailwind CSS + Lucide Icons + Axios in `frontend/`, production build tested and verified (`vite build` succeeded)
+- `backend/ingestion/pdf_parser.py` — PyMuPDF layout-aware text & table extractor, tested on `scholarship_2026.pdf`
+- `backend/ingestion/tesseract_ocr.py` — OpenCV deskew, adaptive Otsu binarization, Laplacian variance sharpness calculation, and Tesseract 5.x OCR
+- `backend/ingestion/pixtral_ocr.py` — Pixtral-12B vision OCR via Ollama multimodal API with automated Tesseract fallback
+- `backend/ingestion/ocr_router.py` — Quality-aware 3-path dispatcher (PyMuPDF / Tesseract / Pixtral-12B) with raster PDF rendering support
+- `backend/ingestion/chunker.py` — 500-token window with 100-token overlap, regex-based automatic metadata extraction (circular numbers, dates, departments)
+- `backend/ingestion/web_crawler.py` — BeautifulSoup institutional notice crawler with local offline cache support in `data/raw/scraped/`
+- `backend/run_ingestion.py` — Batch offline ingestion CLI entry point, verified indexing 354 chunks into ChromaDB and `data/processed/bm25_store.pkl`
+- `backend/retrieval/embedder.py` — BGE-M3 embedding wrapper + ChromaDB persistent collection interface (verified with 354 documents)
+- `backend/retrieval/sparse_search.py` — BM25 Okapi lexical retriever and persistence (verified with 354 documents)
+- Sample verification data created and verified:
+  - `data/raw/pdfs/scholarship_2026.pdf` (MAIT MCM Scholarship circular with eligibility table)
+  - `data/raw/scanned_images/test_notice.jpg` (MAIT Exam Notice image for Tesseract OCR)
+- All 4 tests in **🧪 Test & Verify — Milestone 2** passed with zero errors.
 
 **Architecture locked decisions:**
 - Mistral 7B Instruct / Mistrallite via Ollama for generation (configurable via `OLLAMA_MODEL`)
@@ -1640,15 +1644,13 @@ curl http://localhost:5000/api/health
 - No voice input
 
 **Next task for incoming AI session:**
-Start at **Milestone 2: Layer 1 — Adaptive OCR & Ingestion Pipeline**.
-Key files to implement:
-1. `backend/ingestion/pdf_parser.py` (Task 2.1 - PyMuPDF digital PDF parser)
-2. `backend/ingestion/tesseract_ocr.py` (Task 2.2 - OpenCV deskew + binarize + Tesseract)
-3. `backend/ingestion/pixtral_ocr.py` (Task 2.3 - Pixtral-12B vision fallback via Ollama)
-4. `backend/ingestion/ocr_router.py` (Task 2.4 - Laplacian variance sharpness dispatcher)
-5. `backend/ingestion/chunker.py` (Task 2.5 - Semantic chunking + metadata tagging)
-6. `backend/ingestion/web_crawler.py` (Task 2.6 - BeautifulSoup MAIT notice scraper)
-7. `backend/run_ingestion.py` (Task 2.7 - CLI runner for ingestion)
+Start at **Milestone 3: Layer 2 — Hybrid Retrieval Engine**.
+Key files to implement/finalize:
+1. `backend/retrieval/embedder.py` (Task 3.1 - dense search query interface with BGE-M3)
+2. `backend/retrieval/sparse_search.py` (Task 3.2 - BM25 keyword query search)
+3. `backend/retrieval/rrf_fusion.py` (Task 3.3 - Reciprocal Rank Fusion algorithm k=60)
+4. `backend/retrieval/reranker.py` (Task 3.4 - Cross-encoder re-ranking top-3 passages via BAAI/bge-reranker-v2-m3)
+5. Run **🧪 Test & Verify — Milestone 3** and push commits.
 
 **Key files to read first:**
 - `C:\Users\ynj02\Desktop\minor\project_implementation.md` ← Checklist and instructions
