@@ -1349,7 +1349,7 @@ git push origin main
 
 **Key files to create:** `backend/db/models.py`, `backend/db/database.py`
 
-- [ ] **6.1** Implement `backend/db/models.py` — SQL schema.
+- [x] **6.1** Implement `backend/db/models.py` — SQL schema. *(Completed: SQLAlchemy ORM models QueryLog and EscalationTicket matching exact SQLite specification with JSON source tracking and serialization helpers)*
   ```sql
   -- query_logs: every interaction
   CREATE TABLE IF NOT EXISTS query_logs (
@@ -1379,11 +1379,11 @@ git push origin main
   );
   ```
 
-- [ ] **6.2** Implement `backend/db/database.py` — SQLAlchemy connection + helpers.
+- [x] **6.2** Implement `backend/db/database.py` — SQLAlchemy connection + helpers. *(Completed: Thread-safe SQLite engine, transactional session manager, log_query, log_escalation, get_unresolved_tickets, and update_ticket_status)*
 
-- [ ] **6.3** Wire up logging into `graph.py` — log every query after `language_validator` node.
+- [x] **6.3** Wire up logging into `graph.py` — log every query after `language_validator` node. *(Completed: Added audit_logger terminal node in graph.py after language_validator and integrated log_escalation + log_query into escalation_node)*
 
-- [ ] **6.4** Verify by querying SQLite after 3 test runs: `sqlite3 data/chatbot_audit.db "SELECT * FROM query_logs;"`
+- [x] **6.4** Verify by querying SQLite after 3 test runs: `sqlite3 data/chatbot_audit.db "SELECT * FROM query_logs;"` *(Completed: Verified 3 test query interactions recorded in query_logs and 1 unresolvable ticket recorded in escalation_tickets with status PENDING_STAFF_REVIEW)*
 
 #### 🧪 Test & Verify — Milestone 6
 ```powershell
@@ -1618,19 +1618,20 @@ curl http://localhost:5000/api/health
 
 ## 🤝 HANDOFF
 
-**Status:** Milestone 5 (Layer 4 — LangGraph Self-Corrective Engine) COMPLETE. All 3 tests passed with zero errors. 5-node self-corrective LangGraph workflow (`linguistic_preprocess` -> `hybrid_retrieval` -> `relevance_grader` -> `reformulation` / `generator` -> `hallucination_grader` -> `language_validator` / `escalation`) fully verified on English, Hindi/Hinglish, and unanswerable queries. Ready for Milestone 6 (Layer 5 — Relational DB & SQLite Audit Logging).
+**Status:** Milestone 6 (Layer 5 — Relational DB & SQLite Audit Logging) COMPLETE. All tests passed with zero errors. SQLite audit schema (`query_logs` and `escalation_tickets`) implemented via SQLAlchemy, full CRUD helpers operational, and LangGraph workflow wired to persist all query interactions and escalation tickets automatically. Ready for Milestone 7 (Flask REST API).
 
 **What exists & is verified:**
-- `backend/agent/state.py` — AgentState TypedDict tracking full query lifecycle, linguistic data, retrieval chunks, relevance score, retry counts, citations, groundedness, and escalation flags.
-- `backend/agent/nodes.py` — 5 LangGraph nodes: Node 1 (Relevance Grader with calibrated overlap/rerank scoring), Node 2 (Query Reformulation & Fallback), Node 3 (Mistral 7B Grounded Generator), Node 4 (Loop-Safe Factuality & Hallucination Grader), Node 5 (Language Consistency Validator), fully documented with `# WHAT:` and `# WHY:` comments.
-- `backend/agent/edges.py` — Conditional routing functions (`route_after_grader`, `route_after_hallucination_check`) enforcing retry bounds and avoiding infinite cycles.
-- `backend/agent/graph.py` — StateGraph assembly and compilation connecting Layer 3 linguistic preprocessing, Layer 2 hybrid retrieval, the 5 decision nodes, and the institutional escalation endpoint.
-- All 3 tests in **🧪 Test & Verify — Milestone 5** passed with zero errors:
-  - Test 1 (English query): Grounded response generated with 3 citations (`escalated=False`).
-  - Test 2 (Hinglish query): Validated and translated into Hindi preserving citations (`escalated=False`).
-  - Test 3 (Nonsense query): Self-corrective retries capped and routed to escalation card (`escalated=True`).
+- `backend/db/models.py` — SQLAlchemy ORM models `QueryLog` and `EscalationTicket` with auto-increment primary keys, JSON array source citation tracking, timestamps, and `.to_dict()` serialization helpers, fully documented with `# WHAT:` and `# WHY:` comments.
+- `backend/db/database.py` — Thread-safe SQLite engine, transactional `get_session()` context manager, `init_db()`, `log_query()`, `log_escalation()`, `get_unresolved_tickets()`, and `update_ticket_status()`.
+- `backend/agent/graph.py` — Wired with terminal `audit_logger` node immediately after `language_validator` and updated `escalation_node` logging both unresolved tickets and query interaction telemetry to SQLite.
+- `backend/agent/state.py` — `AgentState` updated with `session_id`, `ocr_method`, and `latency_ms` telemetry fields.
+- Verification results from **🧪 Test & Verify — Milestone 6**:
+  - `init_db()` creates database cleanly: `DB initialized OK`.
+  - Schema inspection confirms exact tables: `Tables: [('query_logs',), ('escalation_tickets',)]`.
+  - Full agent execution across 3 test runs: all 3 interactions recorded in `query_logs` (English, Hindi/Hinglish, and out-of-domain) and 1 escalation ticket recorded in `escalation_tickets` (`PENDING_STAFF_REVIEW`).
 
 **Architecture locked decisions:**
+- SQLite for relational database and audit logs (`data/chatbot_audit.db`)
 - Mistral 7B Instruct / Mistrallite via Ollama for generation (configurable via `OLLAMA_MODEL`)
 - Pixtral-12B via Ollama for noisy image OCR
 - Tesseract 5.x for clean scan OCR, PyMuPDF for digital PDFs
@@ -1641,16 +1642,16 @@ curl http://localhost:5000/api/health
 - `# WHAT:` and `# WHY:` comments mandatory on all functions and major code blocks.
 
 **Next task for incoming AI session:**
-Start at **Milestone 6: Layer 5 — Relational DB & SQLite Audit Logging**.
+Start at **Milestone 7: Flask REST API**.
 Key files to implement:
-1. `backend/db/models.py` (Task 6.1 - SQLAlchemy / SQLite schema for `query_logs` and `escalation_tickets`)
-2. `backend/db/database.py` (Task 6.2 - DB session manager, query logging, escalation logging, and unresolved query retrieval)
-3. Run **🧪 Test & Verify — Milestone 6** and push commits.
+1. `backend/app.py` (Flask REST API with `POST /api/chat`, `GET /api/health`, `GET /api/unresolved`, `POST /api/feedback`, CORS for `http://localhost:5173`, error handling, and latency tracking)
+2. Run **🧪 Test & Verify — Milestone 7** and push commits.
 
 **Key files to read first:**
 - `C:\Users\ynj02\Desktop\minor\project_implementation.md` ← Checklist and instructions
 - `C:\Users\ynj02\Desktop\minor\architecture\architecture_spec_UPDATED.md` ← Architecture reference
 - `C:\Users\ynj02\Desktop\minor\backend\config.py` ← System configuration constants
+- `C:\Users\ynj02\Desktop\minor\backend\db\` ← Layer 5 SQLite database models & helpers
 - `C:\Users\ynj02\Desktop\minor\backend\agent\` ← Layer 4 LangGraph decision engine
 - `C:\Users\ynj02\Desktop\minor\backend\linguistic\` ← Layer 3 linguistic preprocessing modules
 - `C:\Users\ynj02\Desktop\minor\backend\retrieval\` ← Layer 2 hybrid retrieval engine

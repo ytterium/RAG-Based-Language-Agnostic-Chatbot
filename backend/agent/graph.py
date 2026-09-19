@@ -79,23 +79,41 @@ def escalation_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     Escalation Node: Halts generation on out-of-domain queries and issues institutional contact card.
     """
-    try:
-        from db.database import log_escalation
-        log_escalation(state)
-    except Exception:
-        # SQLite database logger will be fully active upon Milestone 6 completion
-        pass
-
     escalation_message = (
         "I was unable to find reliable information for your query in the available notices. "
         "Please contact the administrative office directly:\n"
         "[Office] Room 101, Admin Block | [Hours] 9 AM - 5 PM (Mon-Fri) | [Email] admin@mait.ac.in"
     )
-    return {
+    final_state = {
         **state,
         "final_response": escalation_message,
         "escalated": True
     }
+    try:
+        from db.database import log_escalation, log_query
+        log_escalation(final_state)
+        log_query(final_state)
+    except Exception:
+        pass
+
+    return final_state
+
+
+# WHAT: Terminal logging node persisting interaction telemetry to SQLite query_logs.
+# WHY: Implements Task 6.3 / Layer 5 audit logging. Runs immediately after Node 5
+#      Language Consistency Validator to capture verified queries, language tags,
+#      retrieval sources, relevance scores, and final synthesized answers.
+def audit_logger_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Audit Logger Node: Persists validated interaction telemetry to SQLite query_logs.
+    """
+    try:
+        from db.database import log_query
+        log_query(state)
+    except Exception:
+        # Prevent database logging errors from interrupting response delivery
+        pass
+    return state
 
 
 # WHAT: LangGraph StateGraph pipeline construction and compilation.
@@ -110,6 +128,7 @@ workflow.add_node("reformulation", reformulation_node)
 workflow.add_node("generator", grounded_generator_node)
 workflow.add_node("hallucination_grader", hallucination_grader_node)
 workflow.add_node("language_validator", language_validator_node)
+workflow.add_node("audit_logger", audit_logger_node)
 workflow.add_node("escalation", escalation_node)
 
 # Set graph entry point
@@ -139,7 +158,8 @@ workflow.add_conditional_edges("hallucination_grader", route_after_hallucination
 })
 
 # Terminal endpoints
-workflow.add_edge("language_validator", END)
+workflow.add_edge("language_validator", "audit_logger")
+workflow.add_edge("audit_logger", END)
 workflow.add_edge("escalation", END)
 
 # WHAT: Compiled LangGraph runnable instance.
