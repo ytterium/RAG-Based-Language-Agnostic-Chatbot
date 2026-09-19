@@ -1463,17 +1463,17 @@ git push origin main
 - `ChatWindow.jsx`, `MessageBubble.jsx`, `CitationCard.jsx`, `LanguageBadge.jsx`, `EscalationCard.jsx`
 - `services/api.js`
 
-- [ ] **8.1** Implement `services/api.js` — Axios client for Flask API.
+- [x] **8.1** Implement `services/api.js` — Axios client for Flask API. *(Completed: Configured Axios instance with 120s timeout, sendChatMessage, checkHealth, getUnresolvedTickets, and submitFeedback functions connecting to Flask port 5000)*
 
-- [ ] **8.2** Implement `ChatWindow.jsx` — message feed with auto-scroll, language badge, input box.
+- [x] **8.2** Implement `ChatWindow.jsx` — message feed with auto-scroll, language badge, input box. *(Completed: Multi-turn chat feed with automatic smooth scroll-to-bottom, suggested test prompt chips, session reset, loading typing indicator, and responsive input form)*
 
-- [ ] **8.3** Implement `CitationCard.jsx` — clickable source card showing circular name, date, page.
+- [x] **8.3** Implement `CitationCard.jsx` — clickable source card showing circular name, date, page. *(Completed: Source provenance card displaying circular number, file name, page badge, and expandable accordion showing detailed document grounding metadata)*
 
-- [ ] **8.4** Implement `EscalationCard.jsx` — rendered when backend returns `escalated: true`.
+- [x] **8.4** Implement `EscalationCard.jsx` — rendered when backend returns `escalated: true`. *(Completed: High-visibility administrative contact card rendering Room 101 Admin Block location, 9AM-5PM office hours, copyable admin@mait.ac.in email, and PENDING_STAFF_REVIEW queue notice)*
 
-- [ ] **8.5** Implement `LanguageBadge.jsx` — small badge showing detected language (EN / HI / Hinglish).
+- [x] **8.5** Implement `LanguageBadge.jsx` — small badge showing detected language (EN / HI / Hinglish). *(Completed: Visual indicator with status pulse and globe icon displaying English (EN), Hindi (HI), or Hinglish (HI-Latn) based on Layer 3 linguistic classification)*
 
-- [ ] **8.6** Wire up `App.jsx` and verify end-to-end chat flow.
+- [x] **8.6** Wire up `App.jsx` and verify end-to-end chat flow. *(Completed: Root institutional layout with header telemetry showing live ChromaDB chunk count, active Ollama model, staff triage queue modal fetching /api/unresolved, and embedded ChatWindow)*
   ```powershell
   cd C:\Users\ynj02\Desktop\minor\frontend
   npm run dev
@@ -1613,22 +1613,27 @@ curl http://localhost:5000/api/health
 
 ## 🤝 HANDOFF
 
-**Status:** Milestone 7 (Flask REST API) COMPLETE. All 4 endpoints (`POST /api/chat`, `GET /api/health`, `GET /api/unresolved`, `POST /api/feedback`) implemented and verified with live HTTP requests with zero errors. CORS enabled for React frontend, error handling and latency tracking active. Ready for Milestone 8 (ReactJS Frontend).
+**Status:** Milestone 8 (ReactJS Frontend) COMPLETE. Full frontend chat UI implemented with Tailwind CSS and Lucide icons, connected to Flask backend at port 5000 via Axios, and verified with live browser testing (`npm run dev` on `http://localhost:5173`). Production build (`npm run build`) succeeded with 0 errors. All 5 test verification checks passed. Ready for Milestone 9 (Evaluation & Benchmarking).
 
 **What exists & is verified:**
-- `backend/app.py` — Flask REST API exposing:
-  - `POST /api/chat`: Runs LangGraph self-corrective workflow, returning response, citations, language code, escalation status, session ID, and latency in milliseconds.
-  - `GET /api/health`: Real-time telemetry verifying Ollama connection, ChromaDB collection (354 chunks loaded), and SQLite database readiness.
-  - `GET /api/unresolved`: Administrative endpoint fetching pending student escalation tickets for staff triage.
-  - `POST /api/feedback`: Student feedback endpoint storing thumbs-up (+1) and thumbs-down (0/-1) satisfaction ratings in SQLite.
-- `backend/db/models.py` & `backend/db/database.py` — Updated with `UserFeedback` ORM model, `log_feedback()`, and `get_feedback_logs()` CRUD helpers.
-- Verification results from **🧪 Test & Verify — Milestone 7**:
-  - `GET /api/health`: Status `ok` with all 3 services verified (Ollama, ChromaDB 354 chunks, SQLite).
-  - `GET /api/unresolved`: Status `ok` returning pending escalation ticket.
-  - `POST /api/feedback`: Status `ok` recording rating with generated feedback ID.
-  - `POST /api/chat`: Status `ok` returning grounded answer with 3 citations (`escalated=false`).
+- `frontend/src/services/api.js` — Axios client configured with 120s timeout and error wrappers for all Flask endpoints (`/api/chat`, `/api/health`, `/api/unresolved`, `/api/feedback`).
+- `frontend/src/components/LanguageBadge.jsx` — Visual indicator badge displaying detected language (English, Hindi, or Hinglish) with pulse status indicator.
+- `frontend/src/components/CitationCard.jsx` — Clickable source card displaying circular name, page number badge, date, and expandable accordion revealing grounding provenance metadata.
+- `frontend/src/components/EscalationCard.jsx` — High-visibility administrative alert card rendered when `escalated: true`, displaying Room 101 Admin Block contact details, 9 AM–5 PM office hours, copyable `admin@mait.ac.in` button, and SQLite `PENDING_STAFF_REVIEW` notice.
+- `frontend/src/components/MessageBubble.jsx` — Formatted message turn component supporting bolding, citations list, escalation cards, response latency display, and thumbs-up/down feedback triggers.
+- `frontend/src/components/ChatWindow.jsx` — Message feed container with automatic scroll-to-bottom, suggested prompt chips, conversation reset, typing indicator, and responsive input field.
+- `frontend/src/App.jsx` — Main institutional layout with live telemetry indicator (Ollama + ChromaDB chunk count), administrative staff triage queue modal (`/api/unresolved`), and architecture badge strip.
+- Verification results from **🧪 Test & Verify — Milestone 8**:
+  - Test 1 ("What is the scholarship deadline?"): Returned grounded answer with 3 citations (`scholarship_2026.pdf`, `test_notice.jpg`, `https://mait.ac.in#notice_84`), `detected_language: "en"`, `escalated: false`.
+  - Test 2 ("fees kab bharna hai"): Returned fee schedule from notice `MAIT/ACAD/2026/102`, `detected_language: "hi"`, `escalated: false`.
+  - Test 3 ("xyzunknown123"): Escalated query returned Room 101 Admin Block contact with `escalated: true`, successfully logged ticket to SQLite queue.
+  - Test 4 (Citation provenance): Verified CitationCard renders source filename, date, and page number with accordion metadata details.
+  - Test 5 (Language badge): Verified LanguageBadge renders EN for English queries and HI for Hindi/Hinglish queries.
+  - Test 6 (Feedback): Verified thumbs-up rating recorded to SQLite via `/api/feedback`.
+  - Test 7 (Staff triage modal): Verified modal fetches and renders pending tickets from `/api/unresolved`.
 
 **Architecture locked decisions:**
+- Vite + ReactJS + Tailwind CSS frontend listening on port 5173 with proxy/Axios to `http://localhost:5000`
 - Flask backend listening on port 5000 with CORS for `http://localhost:5173`
 - SQLite for relational database, audit logs, and student feedback (`data/chatbot_audit.db`)
 - Mistral 7B Instruct / Mistrallite via Ollama for generation (configurable via `OLLAMA_MODEL`)
@@ -1638,21 +1643,22 @@ curl http://localhost:5000/api/health
 - Languages: English + Hindi/Hinglish only
 - Web scraper is offline batch only (not runtime)
 - No voice input
-- `# WHAT:` and `# WHY:` comments mandatory on all functions and major code blocks.
+- `# WHAT:` and `# WHY:` comments mandatory on all functions, components, and major code blocks.
 
 **Next task for incoming AI session:**
-Start at **Milestone 8: ReactJS Frontend**.
-Key components to implement:
-1. `frontend/src/services/api.js` (Axios client for Flask API endpoints)
-2. `frontend/src/components/ChatWindow.jsx` (Message feed with auto-scroll, language badge, input)
-3. `frontend/src/components/CitationCard.jsx` (Clickable source card showing filename, date, page)
-4. `frontend/src/components/EscalationCard.jsx` (Rendered when backend returns `escalated: true`)
-5. `frontend/src/components/LanguageBadge.jsx` (Detected language indicator EN / HI / Hinglish)
-6. `frontend/src/App.jsx` (Assemble UI and verify full chat flow on http://localhost:5173)
+Start at **Milestone 9: Evaluation & Benchmarking (IEEE Paper Data)**.
+Key tasks to implement:
+1. **Task 9.1:** Collect/curate 50 MAIT notice images with ground-truth transcriptions in `data/eval/ocr_benchmark/`.
+2. **Task 9.2:** Implement `backend/eval/benchmark_ocr.py` comparing CER and WER across PyMuPDF, Tesseract, and Pixtral-12B → output `results/ocr_comparison_table.csv` for IEEE paper Table III.
+3. **Task 9.3:** Curate 200 Q&A pairs (English + Hindi/Hinglish) from real MAIT notices in `data/eval/ragas_dataset.json`.
+4. **Task 9.4:** Implement `backend/eval/run_ragas.py` computing faithfulness, context precision, and answer relevance → output `results/ragas_scores.json` for IEEE paper Table IV.
+5. **Task 9.5:** Run deflection rate evaluation test (50 routine queries).
+6. **Task 9.6:** Compile all results into `results/evaluation_summary.md`.
 
 **Key files to read first:**
-- `C:\Users\ynj02\Desktop\minor\project_implementation.md` ← Checklist and instructions
-- `C:\Users\ynj02\Desktop\minor\architecture\architecture_spec_UPDATED.md` ← Architecture reference
-- `C:\Users\ynj02\Desktop\minor\frontend\` ← React frontend workspace
-- `C:\Users\ynj02\Desktop\minor\backend\app.py` ← Flask REST API endpoints
-- `C:\Users\ynj02\Desktop\minor\backend\config.py` ← System configuration constants
+- `C:\Users\ynj02\Desktop\minor\project_implementation.md` ← Primary guide and evaluation checklist
+- `C:\Users\ynj02\Desktop\minor\architecture\architecture_spec_UPDATED.md` ← Section 6 (Research Contributions) and Section 7 (Evaluation Plan)
+- `C:\Users\ynj02\Desktop\minor\backend\app.py` ← Flask API endpoints
+- `C:\Users\ynj02\Desktop\minor\backend\agent\graph.py` ← LangGraph compiled workflow
+- `C:\Users\ynj02\Desktop\minor\frontend\src\` ← Verified React UI components
+
