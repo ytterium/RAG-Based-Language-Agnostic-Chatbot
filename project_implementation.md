@@ -1016,7 +1016,7 @@ git push origin main
 - `backend/agent/edges.py`
 - `backend/agent/graph.py`
 
-- [ ] **5.1** Define `backend/agent/state.py` — AgentState TypedDict.
+- [x] **5.1** Define `backend/agent/state.py` — AgentState TypedDict. *(Completed: typed state container tracking original/normalized query, detected language, retrieved chunks, scores, retry bounds, draft, citations, and flags)*
   ```python
   # backend/agent/state.py
   from typing import TypedDict, List, Dict, Any, Optional
@@ -1043,7 +1043,7 @@ git push origin main
       final_response: str
   ```
 
-- [ ] **5.2** Implement `backend/agent/nodes.py` — all 5 LangGraph nodes.
+- [x] **5.2** Implement `backend/agent/nodes.py` — all 5 LangGraph nodes. *(Completed: Node 1 relevance grader with keyword/rerank calibration, Node 2 reformulation fallback, Node 3 grounded generation, Node 4 loop-safe hallucination grader, Node 5 language consistency validator)*
   ```python
   # backend/agent/nodes.py
   import ollama
@@ -1178,7 +1178,7 @@ git push origin main
       return {**state, "final_response": response["message"]["content"]}
   ```
 
-- [ ] **5.3** Implement `backend/agent/edges.py` — conditional routing logic.
+- [x] **5.3** Implement `backend/agent/edges.py` — conditional routing logic. *(Completed: conditional routers route_after_grader and route_after_hallucination_check with retry bounds)*
   ```python
   # backend/agent/edges.py
   from config import RELEVANCE_THRESHOLD, MAX_RETRY_COUNT
@@ -1200,7 +1200,7 @@ git push origin main
       return "regenerate"
   ```
 
-- [ ] **5.4** Implement `backend/agent/graph.py` — compiled LangGraph workflow.
+- [x] **5.4** Implement `backend/agent/graph.py` — compiled LangGraph workflow. *(Completed: compiled StateGraph integrating linguistic preprocessing, hybrid retrieval, 5 decision nodes, conditional routing, and escalation endpoint)*
   ```python
   # backend/agent/graph.py
   from langgraph.graph import StateGraph, END
@@ -1618,15 +1618,17 @@ curl http://localhost:5000/api/health
 
 ## 🤝 HANDOFF
 
-**Status:** Milestone 4 (Layer 3 — Linguistic Pre-Processing) COMPLETE. All 3 tests passed with zero errors. Lingua language detection (en/hi), Devanagari script detection, Hinglish phonetic normalizer with intent-keyword mapping, and Mistral 7B contextual query rewriter for multi-turn conversational pronoun resolution verified. Ready for Milestone 5 (Layer 4 — LangGraph Self-Corrective Engine).
+**Status:** Milestone 5 (Layer 4 — LangGraph Self-Corrective Engine) COMPLETE. All 3 tests passed with zero errors. 5-node self-corrective LangGraph workflow (`linguistic_preprocess` -> `hybrid_retrieval` -> `relevance_grader` -> `reformulation` / `generator` -> `hallucination_grader` -> `language_validator` / `escalation`) fully verified on English, Hindi/Hinglish, and unanswerable queries. Ready for Milestone 6 (Layer 5 — Relational DB & SQLite Audit Logging).
 
 **What exists & is verified:**
-- `backend/linguistic/detector.py` — Lingua-py language detector supporting English, Hindi (Devanagari), and Romanized Hinglish phonetic markers, fully documented with `# WHAT:` and `# WHY:` comments.
-- `backend/linguistic/normalizer.py` — Hinglish phonetic normalizer, intent-phrase dictionary, anchor keyword extractor, and indic-transliteration integration, fully documented with `# WHAT:` and `# WHY:` comments.
-- `backend/linguistic/query_rewriter.py` — Contextual multi-turn query rewriter using Mistral 7B via Ollama resolving conversational pronouns into standalone search queries, fully documented with `# WHAT:` and `# WHY:` comments.
-- Layer 2 Hybrid Retrieval Engine (`backend/retrieval/`) — BGE-M3 dense search, BM25 sparse search, RRF (k=60), and cross-encoder re-ranking (bge-reranker-v2-m3) verified with top-3 passages.
-- Layer 1 Ingestion Pipeline (`backend/ingestion/` + `backend/run_ingestion.py`) verified with 354 chunks in ChromaDB and BM25 index.
-- All 3 tests in **🧪 Test & Verify — Milestone 4** passed with zero errors.
+- `backend/agent/state.py` — AgentState TypedDict tracking full query lifecycle, linguistic data, retrieval chunks, relevance score, retry counts, citations, groundedness, and escalation flags.
+- `backend/agent/nodes.py` — 5 LangGraph nodes: Node 1 (Relevance Grader with calibrated overlap/rerank scoring), Node 2 (Query Reformulation & Fallback), Node 3 (Mistral 7B Grounded Generator), Node 4 (Loop-Safe Factuality & Hallucination Grader), Node 5 (Language Consistency Validator), fully documented with `# WHAT:` and `# WHY:` comments.
+- `backend/agent/edges.py` — Conditional routing functions (`route_after_grader`, `route_after_hallucination_check`) enforcing retry bounds and avoiding infinite cycles.
+- `backend/agent/graph.py` — StateGraph assembly and compilation connecting Layer 3 linguistic preprocessing, Layer 2 hybrid retrieval, the 5 decision nodes, and the institutional escalation endpoint.
+- All 3 tests in **🧪 Test & Verify — Milestone 5** passed with zero errors:
+  - Test 1 (English query): Grounded response generated with 3 citations (`escalated=False`).
+  - Test 2 (Hinglish query): Validated and translated into Hindi preserving citations (`escalated=False`).
+  - Test 3 (Nonsense query): Self-corrective retries capped and routed to escalation card (`escalated=True`).
 
 **Architecture locked decisions:**
 - Mistral 7B Instruct / Mistrallite via Ollama for generation (configurable via `OLLAMA_MODEL`)
@@ -1639,17 +1641,16 @@ curl http://localhost:5000/api/health
 - `# WHAT:` and `# WHY:` comments mandatory on all functions and major code blocks.
 
 **Next task for incoming AI session:**
-Start at **Milestone 5: Layer 4 — LangGraph Self-Corrective Engine**.
+Start at **Milestone 6: Layer 5 — Relational DB & SQLite Audit Logging**.
 Key files to implement:
-1. `backend/agent/state.py` (Task 5.1 - AgentState TypedDict definition)
-2. `backend/agent/nodes.py` (Task 5.2 - 5 LangGraph nodes: relevance grader, query reformulation, grounded generator, hallucination grader, language validator)
-3. `backend/agent/edges.py` (Task 5.3 - conditional routing functions)
-4. `backend/agent/graph.py` (Task 5.4 - LangGraph StateGraph assembly and compilation)
-5. Run **🧪 Test & Verify — Milestone 5** and push commits.
+1. `backend/db/models.py` (Task 6.1 - SQLAlchemy / SQLite schema for `query_logs` and `escalation_tickets`)
+2. `backend/db/database.py` (Task 6.2 - DB session manager, query logging, escalation logging, and unresolved query retrieval)
+3. Run **🧪 Test & Verify — Milestone 6** and push commits.
 
 **Key files to read first:**
 - `C:\Users\ynj02\Desktop\minor\project_implementation.md` ← Checklist and instructions
 - `C:\Users\ynj02\Desktop\minor\architecture\architecture_spec_UPDATED.md` ← Architecture reference
 - `C:\Users\ynj02\Desktop\minor\backend\config.py` ← System configuration constants
+- `C:\Users\ynj02\Desktop\minor\backend\agent\` ← Layer 4 LangGraph decision engine
 - `C:\Users\ynj02\Desktop\minor\backend\linguistic\` ← Layer 3 linguistic preprocessing modules
 - `C:\Users\ynj02\Desktop\minor\backend\retrieval\` ← Layer 2 hybrid retrieval engine

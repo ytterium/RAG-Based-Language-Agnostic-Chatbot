@@ -74,7 +74,7 @@ Standalone query:"""
                 {"role": "system", "content": REWRITE_SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt}
             ],
-            options={"temperature": 0.0}
+            options={"temperature": 0.0, "num_predict": 50}
         )
         rewritten = response.get("message", {}).get("content", "").strip()
 
