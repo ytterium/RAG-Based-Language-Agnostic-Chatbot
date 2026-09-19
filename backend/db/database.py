@@ -13,7 +13,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
 from config import SQLITE_DB_PATH
-from db.models import Base, QueryLog, EscalationTicket
+from db.models import Base, QueryLog, EscalationTicket, UserFeedback
 
 # Global singleton handles for engine and session factory
 _engine = None
@@ -236,3 +236,36 @@ def get_query_logs(limit: int = 50) -> List[Dict[str, Any]]:
     with get_session() as session:
         logs = session.query(QueryLog).order_by(QueryLog.id.desc()).limit(limit).all()
         return [log.to_dict() for log in logs]
+
+
+# WHAT: Records student thumbs-up/down feedback for a query into SQLite user_feedback table.
+# WHY: Implements Milestone 7 POST /api/feedback persistence for user feedback analytics and RAGAS alignment.
+def log_feedback(
+    rating: int,
+    session_id: Optional[str] = None,
+    query_id: Optional[int] = None,
+    comment: Optional[str] = None
+) -> int:
+    init_db()
+    with get_session() as session:
+        feedback = UserFeedback(
+            session_id=session_id or "default_session",
+            query_id=query_id,
+            rating=int(rating),
+            comment=comment,
+            created_at=datetime.utcnow(),
+        )
+        session.add(feedback)
+        session.flush()
+        feedback_id = feedback.id
+    return feedback_id
+
+
+# WHAT: Fetches recorded user feedback entries from SQLite ordered by descending ID.
+# WHY: Supports administrative inspection of student satisfaction and model response ratings.
+def get_feedback_logs(limit: int = 50) -> List[Dict[str, Any]]:
+    init_db()
+    with get_session() as session:
+        feedbacks = session.query(UserFeedback).order_by(UserFeedback.id.desc()).limit(limit).all()
+        return [f.to_dict() for f in feedbacks]
+

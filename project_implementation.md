@@ -1413,22 +1413,17 @@ git push origin main
 
 **Key file to create:** `backend/app.py`
 
-- [ ] **7.1** Implement `backend/app.py` with all 4 endpoints:
+- [x] **7.1** Implement `backend/app.py` with all 4 endpoints: *(Completed: POST /api/chat, GET /api/health, GET /api/unresolved, and POST /api/feedback fully operational)*
   - `POST /api/chat` — invoke LangGraph agent, return response + citations
   - `GET /api/health` — verify Ollama running + ChromaDB loaded
   - `GET /api/unresolved` — return escalation tickets for staff
   - `POST /api/feedback` — accept thumbs up/down from student
 
-- [ ] **7.2** Enable CORS for `http://localhost:5173`.
+- [x] **7.2** Enable CORS for `http://localhost:5173`. *(Completed: Flask-CORS enabled for http://localhost:5173 and local origins)*
 
-- [ ] **7.3** Add error handling and latency measurement to all routes.
+- [x] **7.3** Add error handling and latency measurement to all routes. *(Completed: perf_counter latency tracking, 400 validation handlers, and global 500 JSON error boundary)*
 
-- [ ] **7.4** Test with curl:
-  ```powershell
-  curl -X POST http://localhost:5000/api/chat `
-    -H "Content-Type: application/json" `
-    -d '{"query": "What is the last date for scholarship form submission?", "session_id": "test-001", "history": []}'
-  ```
+- [x] **7.4** Test with curl: *(Completed: Verified live HTTP requests for all 4 endpoints including GET /api/health, GET /api/unresolved, POST /api/feedback, and POST /api/chat with grounded citations and latency telemetry)*
 
 #### 🧪 Test & Verify — Milestone 7
 ```powershell
@@ -1618,20 +1613,24 @@ curl http://localhost:5000/api/health
 
 ## 🤝 HANDOFF
 
-**Status:** Milestone 6 (Layer 5 — Relational DB & SQLite Audit Logging) COMPLETE. All tests passed with zero errors. SQLite audit schema (`query_logs` and `escalation_tickets`) implemented via SQLAlchemy, full CRUD helpers operational, and LangGraph workflow wired to persist all query interactions and escalation tickets automatically. Ready for Milestone 7 (Flask REST API).
+**Status:** Milestone 7 (Flask REST API) COMPLETE. All 4 endpoints (`POST /api/chat`, `GET /api/health`, `GET /api/unresolved`, `POST /api/feedback`) implemented and verified with live HTTP requests with zero errors. CORS enabled for React frontend, error handling and latency tracking active. Ready for Milestone 8 (ReactJS Frontend).
 
 **What exists & is verified:**
-- `backend/db/models.py` — SQLAlchemy ORM models `QueryLog` and `EscalationTicket` with auto-increment primary keys, JSON array source citation tracking, timestamps, and `.to_dict()` serialization helpers, fully documented with `# WHAT:` and `# WHY:` comments.
-- `backend/db/database.py` — Thread-safe SQLite engine, transactional `get_session()` context manager, `init_db()`, `log_query()`, `log_escalation()`, `get_unresolved_tickets()`, and `update_ticket_status()`.
-- `backend/agent/graph.py` — Wired with terminal `audit_logger` node immediately after `language_validator` and updated `escalation_node` logging both unresolved tickets and query interaction telemetry to SQLite.
-- `backend/agent/state.py` — `AgentState` updated with `session_id`, `ocr_method`, and `latency_ms` telemetry fields.
-- Verification results from **🧪 Test & Verify — Milestone 6**:
-  - `init_db()` creates database cleanly: `DB initialized OK`.
-  - Schema inspection confirms exact tables: `Tables: [('query_logs',), ('escalation_tickets',)]`.
-  - Full agent execution across 3 test runs: all 3 interactions recorded in `query_logs` (English, Hindi/Hinglish, and out-of-domain) and 1 escalation ticket recorded in `escalation_tickets` (`PENDING_STAFF_REVIEW`).
+- `backend/app.py` — Flask REST API exposing:
+  - `POST /api/chat`: Runs LangGraph self-corrective workflow, returning response, citations, language code, escalation status, session ID, and latency in milliseconds.
+  - `GET /api/health`: Real-time telemetry verifying Ollama connection, ChromaDB collection (354 chunks loaded), and SQLite database readiness.
+  - `GET /api/unresolved`: Administrative endpoint fetching pending student escalation tickets for staff triage.
+  - `POST /api/feedback`: Student feedback endpoint storing thumbs-up (+1) and thumbs-down (0/-1) satisfaction ratings in SQLite.
+- `backend/db/models.py` & `backend/db/database.py` — Updated with `UserFeedback` ORM model, `log_feedback()`, and `get_feedback_logs()` CRUD helpers.
+- Verification results from **🧪 Test & Verify — Milestone 7**:
+  - `GET /api/health`: Status `ok` with all 3 services verified (Ollama, ChromaDB 354 chunks, SQLite).
+  - `GET /api/unresolved`: Status `ok` returning pending escalation ticket.
+  - `POST /api/feedback`: Status `ok` recording rating with generated feedback ID.
+  - `POST /api/chat`: Status `ok` returning grounded answer with 3 citations (`escalated=false`).
 
 **Architecture locked decisions:**
-- SQLite for relational database and audit logs (`data/chatbot_audit.db`)
+- Flask backend listening on port 5000 with CORS for `http://localhost:5173`
+- SQLite for relational database, audit logs, and student feedback (`data/chatbot_audit.db`)
 - Mistral 7B Instruct / Mistrallite via Ollama for generation (configurable via `OLLAMA_MODEL`)
 - Pixtral-12B via Ollama for noisy image OCR
 - Tesseract 5.x for clean scan OCR, PyMuPDF for digital PDFs
@@ -1642,16 +1641,18 @@ curl http://localhost:5000/api/health
 - `# WHAT:` and `# WHY:` comments mandatory on all functions and major code blocks.
 
 **Next task for incoming AI session:**
-Start at **Milestone 7: Flask REST API**.
-Key files to implement:
-1. `backend/app.py` (Flask REST API with `POST /api/chat`, `GET /api/health`, `GET /api/unresolved`, `POST /api/feedback`, CORS for `http://localhost:5173`, error handling, and latency tracking)
-2. Run **🧪 Test & Verify — Milestone 7** and push commits.
+Start at **Milestone 8: ReactJS Frontend**.
+Key components to implement:
+1. `frontend/src/services/api.js` (Axios client for Flask API endpoints)
+2. `frontend/src/components/ChatWindow.jsx` (Message feed with auto-scroll, language badge, input)
+3. `frontend/src/components/CitationCard.jsx` (Clickable source card showing filename, date, page)
+4. `frontend/src/components/EscalationCard.jsx` (Rendered when backend returns `escalated: true`)
+5. `frontend/src/components/LanguageBadge.jsx` (Detected language indicator EN / HI / Hinglish)
+6. `frontend/src/App.jsx` (Assemble UI and verify full chat flow on http://localhost:5173)
 
 **Key files to read first:**
 - `C:\Users\ynj02\Desktop\minor\project_implementation.md` ← Checklist and instructions
 - `C:\Users\ynj02\Desktop\minor\architecture\architecture_spec_UPDATED.md` ← Architecture reference
+- `C:\Users\ynj02\Desktop\minor\frontend\` ← React frontend workspace
+- `C:\Users\ynj02\Desktop\minor\backend\app.py` ← Flask REST API endpoints
 - `C:\Users\ynj02\Desktop\minor\backend\config.py` ← System configuration constants
-- `C:\Users\ynj02\Desktop\minor\backend\db\` ← Layer 5 SQLite database models & helpers
-- `C:\Users\ynj02\Desktop\minor\backend\agent\` ← Layer 4 LangGraph decision engine
-- `C:\Users\ynj02\Desktop\minor\backend\linguistic\` ← Layer 3 linguistic preprocessing modules
-- `C:\Users\ynj02\Desktop\minor\backend\retrieval\` ← Layer 2 hybrid retrieval engine

@@ -79,3 +79,29 @@ class EscalationTicket(Base):
             "status": self.status,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
+
+
+# WHAT: Relational model capturing student thumbs-up/down feedback on generated answers.
+# WHY: Stores explicit human evaluation ratings in SQLite to enable RAGAS calibration and continuous feedback loops.
+class UserFeedback(Base):
+    __tablename__ = "user_feedback"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(String, nullable=True, default="default_session")
+    query_id = Column(Integer, nullable=True)
+    rating = Column(Integer, nullable=False)          # 1 = thumbs-up (+1), 0 or -1 = thumbs-down
+    comment = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, server_default=func.now())
+
+    # WHAT: Serialization helper converting UserFeedback ORM instance into a JSON-compatible dictionary.
+    # WHY: Provides structured data payloads for administrative analytics and feedback inspection.
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "session_id": self.session_id,
+            "query_id": self.query_id,
+            "rating": self.rating,
+            "comment": self.comment,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
