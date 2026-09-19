@@ -1,0 +1,120 @@
+# System Architecture Diagram (Horizontal)
+
+```mermaid
+%% ==========================================
+%% RAG-Based Language Agnostic Chatbot
+%% Clean Horizontal Architecture (flowchart LR)
+%% 100% Parse-Safe for Excalidraw and Mermaid
+%% ==========================================
+
+flowchart LR
+    %% ==========================================
+    %% GLOBAL STYLING & PALETTE
+    %% ==========================================
+    classDef client fill:#EFF6FF,stroke:#2563EB,stroke-width:1.5px,color:#0F172A,rx:6px,ry:6px;
+    classDef ingestion fill:#FFFBEB,stroke:#D97706,stroke-width:1.5px,color:#0F172A,rx:6px,ry:6px;
+    classDef routing fill:#F0FDFA,stroke:#0D9488,stroke-width:1.5px,color:#0F172A,rx:6px,ry:6px;
+    classDef storage fill:#E0F2FE,stroke:#0284C7,stroke-width:1.5px,color:#0F172A,rx:6px,ry:6px;
+    classDef agent fill:#FFF1F2,stroke:#E11D48,stroke-width:1.5px,color:#0F172A,rx:6px,ry:6px;
+    classDef eval fill:#FDF2F8,stroke:#DB2777,stroke-width:1.5px,color:#0F172A,rx:6px,ry:6px;
+    classDef governance fill:#F1F5F9,stroke:#475569,stroke-width:1.5px,color:#0F172A,rx:6px,ry:6px;
+
+    %% ==========================================
+    %% STAGE 1: CLIENT AND INGESTION INPUTS
+    %% ==========================================
+    subgraph S1 ["1. Client and Ingestion Inputs"]
+        direction TB
+        USR["Student Query<br/>Hindi, Hinglish, or Regional"]:::client
+        FE["ReactJS Client Interface<br/>Chat UI and Citation Cards"]:::client
+        PDF["Institutional PDFs<br/>Circulars and Guidelines"]:::ingestion
+        WEB["Campus Notice Board<br/>BeautifulSoup Scraper"]:::ingestion
+
+        USR -->|User Prompt| FE
+    end
+
+    %% ==========================================
+    %% STAGE 2: PARSING AND PRE-PROCESSING
+    %% ==========================================
+    subgraph S2 ["2. Parsing and Pre-Processing"]
+        direction TB
+        LDEC["Language Detector and Normalizer<br/>Hinglish Transliteration"]:::routing
+        MEM["LangGraph State Memory<br/>Conversation History Context"]:::routing
+        QRW["Contextual Query Rewriter<br/>Resolves Pronouns Across Turns"]:::routing
+        CHK["Semantic Chunker<br/>500 Tokens with Metadata"]:::ingestion
+
+        FE -->|API Request| LDEC
+        LDEC -->|Clean Query| MEM
+        MEM -->|State Context| QRW
+
+        PDF -->|PyMuPDF Parse| CHK
+        WEB -->|HTML Extract| CHK
+    end
+
+    %% ==========================================
+    %% STAGE 3: STORAGE AND DUAL INDEXING
+    %% ==========================================
+    subgraph S3 ["3. Storage and Dual Indexing"]
+        direction TB
+        VDB[("Dense Vector Store<br/>BAAI BGE-M3 Index")]:::storage
+        BM25[("Sparse Lexical Index<br/>BM25 for Dates and IDs")]:::storage
+
+        CHK -->|Dense Embedding| VDB
+        CHK -->|Inverted Index| BM25
+    end
+
+    %% ==========================================
+    %% STAGE 4: HYBRID RETRIEVAL ENGINE
+    %% ==========================================
+    subgraph S4 ["4. Hybrid Retrieval Engine"]
+        direction TB
+        RRF["Reciprocal Rank Fusion RRF<br/>Combines Dense and Sparse"]:::routing
+        RNK["Cross-Encoder Re-Ranker<br/>Filters to Top 3 Chunks"]:::routing
+
+        QRW -->|Dense Search| VDB
+        QRW -->|Keyword Search| BM25
+
+        VDB -->|Vector Candidates| RRF
+        BM25 -->|Lexical Candidates| RRF
+        RRF -->|Fused Passages| RNK
+    end
+
+    %% ==========================================
+    %% STAGE 5: LANGGRAPH SELF-RAG ENGINE
+    %% ==========================================
+    subgraph S5 ["5. LangGraph Self-RAG Decision Engine"]
+        direction TB
+        GRD{"Document Relevance<br/>Grader"}:::eval
+        REF["Query Reformulator<br/>Expands Search Terms"]:::agent
+        GEN["Grounded Generator LLM<br/>Strict Source Citations"]:::agent
+        HAL{"Factuality and<br/>Hallucination Grader"}:::eval
+        VAL{"Language Consistency<br/>Validator"}:::eval
+
+        RNK -->|Ranked Chunks| GRD
+
+        GRD -->|High Relevance| GEN
+        GRD -->|Context Missing| REF
+        REF -->|Re-Query Retry| RNK
+
+        GEN -->|Draft Answer| HAL
+        HAL -->|Hallucinated Draft| GEN
+        HAL -->|Strictly Grounded| VAL
+    end
+
+    %% ==========================================
+    %% STAGE 6: GOVERNANCE AND DELIVERY
+    %% ==========================================
+    subgraph S6 ["6. Governance and Output Delivery"]
+        direction TB
+        OUT["Verified Answer Payload<br/>Response Text and PDF Cards"]:::client
+        ESC["Human Helpdesk Escalation<br/>Office Visiting Hours Card"]:::governance
+        SQL[("SQL Audit Database<br/>Unresolved Query Backlog")]:::governance
+
+        VAL -->|Language Verified| OUT
+        VAL -->|Language Drift| GEN
+
+        GRD -->|Retries Exceeded| ESC
+        ESC -->|Log Ticket| SQL
+        ESC -->|Helpdesk Card| FE
+        OUT -->|Show Citations| FE
+    end
+```
