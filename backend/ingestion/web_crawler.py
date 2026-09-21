@@ -17,6 +17,9 @@ try:
 except ImportError:
     from backend.config import RAW_SCRAPED_DIR
 
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 # WHAT: List of institutional notice board URLs to monitor across MAIT and affiliating university GGSIPU.
 # WHY: Captures official circulars, examination schedules, fee deadlines, and admission announcements
 #      published on both the college portal (mait.ac.in) and university portal (ipu.ac.in).
@@ -24,12 +27,14 @@ NOTICE_BOARD_URLS = [
     "https://www.mait.ac.in/index.php/notices",
     "https://www.mait.ac.in/notices.php",
     "https://mait.ac.in",
-    "http://www.ipu.ac.in/notices.php",
     "https://ipu.ac.in/notices.php",
-    "http://www.ipu.ac.in/exam_notices.php",
     "https://ipu.ac.in/exam_notices.php",
-    "https://ipu.ac.in",
 ]
+
+# WHAT: Maximum number of recent notices to harvest per URL.
+# WHY: Prevents historical notice dumps (IPU has 14,000+ notices dating to 2008) from overwhelming
+#      the CPU embedding step; prioritizes the most recent semester/academic year circulars.
+MAX_NOTICES_PER_URL = 100
 
 REQUEST_HEADERS = {
     "User-Agent": (
@@ -88,37 +93,51 @@ def scrape_notices() -> List[Dict[str, Any]]:
     Falls back to cached documents if network is unreachable or blocked.
     """
     all_notices: List[Dict[str, Any]] = []
+    seen_texts: set = set()
 
     for url in NOTICE_BOARD_URLS:
         try:
-            resp = requests.get(url, headers=REQUEST_HEADERS, timeout=6)
+            resp = requests.get(url, headers=REQUEST_HEADERS, timeout=10, verify=False)
             if resp.status_code != 200:
                 continue
 
             soup = BeautifulSoup(resp.text, "html.parser")
 
-            # Strategy 1: Find notice divs, tables, or list items with matching class tags
-            notice_elements = soup.find_all(
+            notice_elements = []
+
+            # Strategy 1: Find notice divs, tables, or list items with matching class tags (limit to 150)
+            class_elements = soup.find_all(
                 ["div", "tr", "li"],
-                class_=re.compile(r'(notice|announcement|circular|news|item)', re.IGNORECASE)
+                class_=re.compile(r'(notice|announcement|circular|news|item)', re.IGNORECASE),
+                limit=150
             )
+            notice_elements.extend(class_elements)
 
-            # Strategy 2: If on a dedicated notice page or university table, also extract table rows containing links
+            # Strategy 2: If on a dedicated notice page or university table, extract top recent table rows
             if "notices" in url.lower() or "ipu.ac.in" in url.lower():
-                table_rows = soup.find_all("tr")
+                table_rows = soup.find_all("tr", limit=150)
                 for row in table_rows:
-                    if row not in notice_elements:
-                        cells = row.find_all(["td", "th"])
-                        if len(cells) >= 2 and row.find("a"):
-                            notice_elements.append(row)
+                    cells = row.find_all(["td", "th"])
+                    if len(cells) >= 2 and row.find("a"):
+                        notice_elements.append(row)
 
+            url_count = 0
             for el in notice_elements:
+                if url_count >= MAX_NOTICES_PER_URL:
+                    break
+
                 title_el = el.find(["h3", "h4", "a", "strong", "p"])
                 date_el = el.find(["span", "small", "td", "time"], class_=re.compile(r'(date|time)', re.IGNORECASE))
 
                 text = el.get_text(separator=" ", strip=True)
                 if len(text) < 15:
                     continue
+
+                # Deduplicate by first 80 characters of text
+                text_key = " ".join(text.lower().split()[:15])
+                if text_key in seen_texts:
+                    continue
+                seen_texts.add(text_key)
 
                 date_str = date_el.get_text(strip=True) if date_el else str(datetime.today().date())
 
@@ -134,13 +153,14 @@ def scrape_notices() -> List[Dict[str, Any]]:
                         "ocr_method": "web_scrape"
                     }
                 })
+                url_count += 1
 
         except requests.exceptions.RequestException as req_err:
             print(f"[SCRAPER] Network request to {url} skipped ({req_err})")
         except Exception as exc:
             print(f"[SCRAPER] Parsing error for {url}: {exc}")
 
-    # If live scraping returned results, optionally cache a snapshot
+    # If live scraping returned results, cache a snapshot for offline reproducibility
     if all_notices and os.path.exists(RAW_SCRAPED_DIR):
         cache_path = os.path.join(RAW_SCRAPED_DIR, f"scraped_{datetime.today().strftime('%Y%m%d')}.json")
         try:
@@ -148,9 +168,8 @@ def scrape_notices() -> List[Dict[str, Any]]:
                 json.dump(all_notices, f, indent=2)
         except Exception:
             pass
-
-    # Merge cached historical notices
-    cached = load_cached_scraped_files()
-    all_notices.extend(cached)
+    elif not all_notices:
+        # Fallback to cached historical notices ONLY if live scraping yielded 0
+        all_notices = load_cached_scraped_files()
 
     return all_notices
