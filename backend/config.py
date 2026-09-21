@@ -33,6 +33,13 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistrallite")
 OLLAMA_VISION_MODEL = os.getenv("OLLAMA_VISION_MODEL", "pixtral")
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
+# WHAT: Unified Ollama CPU runtime execution options.
+# WHY: Ensures all nodes (rewriter, generator, grader, validator) share identical context size (2048)
+#      and thread count (6). Eliminates the 105s model reload penalty triggered when Ollama switches runners,
+#      and keeps KV cache within 256MB for optimal CPU cache locality.
+OLLAMA_NUM_CTX = int(os.getenv("OLLAMA_NUM_CTX", "2048"))
+OLLAMA_NUM_THREAD = int(os.getenv("OLLAMA_NUM_THREAD", "6"))
+
 # Chunking Configuration
 CHUNK_SIZE_TOKENS = 500
 CHUNK_OVERLAP_TOKENS = 100

@@ -12,7 +12,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 // WHY: Agentic pipeline (hybrid search + Mistral 7B + verification nodes) can take 5-15 seconds locally on CPU/GPU.
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 120000, // 120 seconds timeout for local LLM generation
+  timeout: 300000, // 300 seconds (5 min) timeout for local CPU LLM inference passes
   headers: {
     'Content-Type': 'application/json',
   },

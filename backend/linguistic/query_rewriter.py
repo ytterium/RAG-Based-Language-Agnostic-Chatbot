@@ -8,7 +8,7 @@
 
 from typing import List, Dict, Any
 import ollama
-from config import OLLAMA_MODEL
+from config import OLLAMA_MODEL, OLLAMA_NUM_CTX, OLLAMA_NUM_THREAD
 
 # WHAT: System instructions for Mistral 7B guiding contextual query rewriting.
 # WHY: Instructs the model to output strictly the rewritten standalone query without conversational chatter,
@@ -74,7 +74,7 @@ Standalone query:"""
                 {"role": "system", "content": REWRITE_SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt}
             ],
-            options={"temperature": 0.0, "num_predict": 50}
+            options={"temperature": 0.0, "num_predict": 50, "num_ctx": OLLAMA_NUM_CTX, "num_thread": OLLAMA_NUM_THREAD}
         )
         rewritten = response.get("message", {}).get("content", "").strip()
 

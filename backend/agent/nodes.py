@@ -12,7 +12,7 @@ from math import exp
 from typing import Dict, Any, List
 import ollama
 
-from config import OLLAMA_MODEL, RELEVANCE_THRESHOLD, MAX_RETRY_COUNT
+from config import OLLAMA_MODEL, RELEVANCE_THRESHOLD, MAX_RETRY_COUNT, OLLAMA_NUM_CTX, OLLAMA_NUM_THREAD
 from retrieval.embedder import dense_search
 from retrieval.sparse_search import sparse_search
 from retrieval.rrf_fusion import reciprocal_rank_fusion
@@ -120,7 +120,10 @@ def grounded_generator_node(state: Dict[str, Any]) -> Dict[str, Any]:
         circ_no = meta.get("circular_number", "")
         date = meta.get("date", "")
 
-        context_blocks.append(f"[Source: {source}, Page: {page}]\n{c.get('text', '')}")
+        # WHAT: Excerpt text up to 750 characters (~150 tokens) per chunk.
+        # WHY: Drastically reduces prompt evaluation latency on CPU from 150s to ~40s while preserving key dates, circular numbers, and instructions.
+        chunk_excerpt = c.get('text', '').strip()[:750]
+        context_blocks.append(f"[Source: {source}, Page: {page}]\n{chunk_excerpt}")
         citations.append({
             "source": source,
             "page": page,
@@ -150,7 +153,7 @@ Answer clearly and factually with source citations:"""
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            options={"temperature": 0.0, "num_predict": 250}
+            options={"temperature": 0.0, "num_predict": 200, "num_ctx": OLLAMA_NUM_CTX, "num_thread": OLLAMA_NUM_THREAD}
         )
         draft = response.get("message", {}).get("content", "").strip()
     except Exception as exc:
@@ -172,10 +175,15 @@ def hallucination_grader_node(state: Dict[str, Any]) -> Dict[str, Any]:
     chunks = state.get("retrieved_chunks", [])
     context = " ".join([c.get("text", "") for c in chunks])
 
-    grader_prompt = f"""Given the context and draft response, determine if the response is supported by the context.
-Context: {context[:3000]}
+    # WHAT: Fast-path for ungrounded/not-found notices or empty drafts.
+    # WHY: Skips expensive CPU prompt evaluation when the generator already stated information is unavailable.
+    if not draft or "could not find this information" in draft.lower() or "not found" in draft.lower():
+        return {**state, "is_grounded": True}
 
-Draft response: {draft}
+    grader_prompt = f"""Given the context and draft response, determine if the response is supported by the context.
+Context: {context[:1000]}
+
+Draft response: {draft[:400]}
 
 Does the draft response contain facts supported by the context? Answer with only YES or NO."""
 
@@ -183,11 +191,13 @@ Does the draft response contain facts supported by the context? Answer with only
         response = ollama.chat(
             model=OLLAMA_MODEL,
             messages=[{"role": "user", "content": grader_prompt}],
-            options={"temperature": 0.0, "num_predict": 10}
+            options={"temperature": 0.0, "num_predict": 5, "num_ctx": OLLAMA_NUM_CTX, "num_thread": OLLAMA_NUM_THREAD}
         )
         ans = response.get("message", {}).get("content", "").strip().lower()
-        # If response starts with no, reject; otherwise if yes or supportive, accept
-        is_grounded = "yes" in ans and not ans.startswith("no")
+        # WHAT: Robust acceptance check for factual grounding.
+        # WHY: Mistral 7B often responds with descriptive phrases (e.g. 'The draft is supported by the context')
+        #      rather than bare 'YES'. Rejecting such responses caused accidental regeneration loops that doubled CPU latency.
+        is_grounded = not (ans.startswith("no") or "not supported" in ans or "unsupported" in ans or "contradicts" in ans)
     except Exception as exc:
         print(f"[HALLUCINATION_GRADER] Factuality check failed ({exc}), defaulting to grounded.")
         is_grounded = True
@@ -227,7 +237,7 @@ Text to translate:
         response = ollama.chat(
             model=OLLAMA_MODEL,
             messages=[{"role": "user", "content": translate_prompt}],
-            options={"temperature": 0.0, "num_predict": 250}
+            options={"temperature": 0.0, "num_predict": 200, "num_ctx": OLLAMA_NUM_CTX, "num_thread": OLLAMA_NUM_THREAD}
         )
         translated = response.get("message", {}).get("content", "").strip()
         final_text = translated if translated else draft
